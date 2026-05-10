@@ -112,7 +112,12 @@ export function PostCard({ post, compact = false }: PostCardProps) {
       </div>
 
       {/* Sphere + metadata */}
-      <div className="flex items-center gap-2 mb-3 pr-8">
+      <div className="flex items-center gap-2 mb-3 pr-8 flex-wrap">
+        {post.isPinned && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 text-amber-600 text-[10px] font-black uppercase tracking-wider">
+            📌 Pinned
+          </span>
+        )}
         <button
           onClick={e => { e.stopPropagation(); navigate(`/sphere/${post.sphereSlug}`); }}
           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50 text-xs font-black uppercase tracking-wider text-[#7C3AED] hover:bg-[#7C3AED]/10 transition-all"
@@ -126,6 +131,14 @@ export function PostCard({ post, compact = false }: PostCardProps) {
             <span className="text-xs text-zinc-400">•</span>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#0D9488]/10 border border-[#0D9488]/20 text-[#0D9488] text-[10px] font-black uppercase tracking-wider">
               {post.flair}
+            </span>
+          </>
+        )}
+        {post.isEvent && post.eventDate && (
+          <>
+            <span className="text-xs text-zinc-400">•</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800/50 text-pink-600 text-[10px] font-black uppercase tracking-wider">
+              📅 {post.eventDate}
             </span>
           </>
         )}

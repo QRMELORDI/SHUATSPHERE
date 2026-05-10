@@ -1,0 +1,111 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+  build-android:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v2
+      
+      - name: Sync Capacitor
+        run: npx cap sync android
+      
+      - name: Build Android APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: shuatsphere.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  create-release:
+    needs: build-android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: shuatsphere.apk
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: app-debug.apk
+          tag_name: v${{ github.run_number }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-version-api:
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update version file
+        run: |
+          echo "VERSION=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "APK_URL=https://github.com/${{ github.repository }}/releases/download/v${{ github.run_number }}/app-debug.apk" >> $GITHUB_ENV
+      
+      - name: Create version.json
+        run: |
+          echo '{"version": ${{ github.run_number }}, "apkUrl": "https://github.com/${{ github.repository }}/releases/download/v${{ github.run_number }}/app-debug.apk", "releaseNotes": "Auto-update from CI/CD"}' > version.json
+      
+      - name: Upload version.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: version
+          path: version.json
