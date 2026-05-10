@@ -1,0 +1,44 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+/* ── Animated banner keyframes ── */
+@keyframes bannerRainbow {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+.banner-anim-rainbow {
+  background: linear-gradient(-45deg, #7C3AED, #0D9488, #6D28D9, #0EA5E9, #EC4899);
+  background-size: 400% 400%;
+  animation: bannerRainbow 6s ease infinite;
+}
+.banner-anim-ocean {
+  background: linear-gradient(-45deg, #0D9488, #0EA5E9, #06B6D4, #0D9488);
+  background-size: 400% 400%;
+  animation: bannerRainbow 5s ease infinite;
+}
+.banner-anim-cosmic {
+  background: linear-gradient(-45deg, #7C3AED, #6D28D9, #4C1D95, #7C3AED, #A855F7);
+  background-size: 400% 400%;
+  animation: bannerRainbow 4s ease infinite;
+}
+.banner-anim-sunset {
+  background: linear-gradient(-45deg, #EC4899, #F97316, #EF4444, #EC4899);
+  background-size: 400% 400%;
+  animation: bannerRainbow 5s ease infinite;
+}
+.banner-anim-forest {
+  background: linear-gradient(-45deg, #059669, #10B981, #84CC16, #16A34A);
+  background-size: 400% 400%;
+  animation: bannerRainbow 5s ease infinite;
+}
+.banner-anim-gold {
+  background: linear-gradient(-45deg, #D97706, #F59E0B, #FCD34D, #D97706);
+  background-size: 400% 400%;
+  animation: bannerRainbow 4s ease infinite;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
