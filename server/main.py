@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
@@ -50,6 +50,11 @@ def create_token(data: dict, expires_delta: timedelta = timedelta(days=7)):
     expire = datetime.utcnow() + expires_delta
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_token(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="No token provided")
+    return authorization.replace("Bearer ", "")
 
 async def get_current_user(token: str):
     try:
@@ -232,10 +237,7 @@ async def login(user: UserLogin):
     return {"token": token, "user": serialize_doc(db_user)}
 
 @app.get("/api/auth/me", response_model=UserResponse)
-async def get_me(authorization: str = Depends(lambda: None)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="No token provided")
-    token = authorization.replace("Bearer ", "")
+async def get_me(token: str = Depends(get_token)):
     user = await get_current_user(token)
     return user
 
@@ -247,7 +249,7 @@ async def get_user(user_id: str):
     return serialize_doc(user)
 
 @app.put("/api/users/me", response_model=UserResponse)
-async def update_me(token: str = Depends(lambda x: x), data: dict = None):
+async def update_me(token: str = Depends(get_token), data: dict = None):
     user = await get_current_user(token)
     await db.users.update_one(
         {"_id": ObjectId(user["id"])},
@@ -270,7 +272,7 @@ async def get_spheres(category: Optional[str] = None, search: Optional[str] = No
     return [serialize_doc(s) for s in spheres]
 
 @app.post("/api/spheres", response_model=SphereResponse)
-async def create_sphere(sphere: SphereCreate, token: str = Depends(lambda: None)):
+async def create_sphere(sphere: SphereCreate, token: str = Depends(get_token)):
     user = await get_current_user(token)
     
     existing = await db.spheres.find_one({"slug": sphere.slug})
@@ -311,7 +313,7 @@ async def get_sphere(slug: str):
     return serialize_doc(sphere)
 
 @app.post("/api/spheres/{slug}/join")
-async def join_sphere(slug: str, token: str = Depends(lambda: None)):
+async def join_sphere(slug: str, token: str = Depends(get_token)):
     user = await get_current_user(token)
     sphere = await db.spheres.find_one({"slug": slug})
     if not sphere:
@@ -328,7 +330,7 @@ async def join_sphere(slug: str, token: str = Depends(lambda: None)):
     return {"success": True}
 
 @app.post("/api/spheres/{slug}/leave")
-async def leave_sphere(slug: str, token: str = Depends(lambda: None)):
+async def leave_sphere(slug: str, token: str = Depends(get_token)):
     user = await get_current_user(token)
     sphere = await db.spheres.find_one({"slug": slug})
     if not sphere:
@@ -362,7 +364,7 @@ async def get_posts(sphere: Optional[str] = None, sort: str = "trending", limit:
     return [serialize_doc(p) for p in posts]
 
 @app.post("/api/posts", response_model=PostResponse)
-async def create_post(post: PostCreate, token: str = Depends(lambda: None)):
+async def create_post(post: PostCreate, token: str = Depends(get_token)):
     user = await get_current_user(token)
     sphere = await db.spheres.find_one({"slug": post.sphereSlug})
     if not sphere:
@@ -406,7 +408,7 @@ async def get_post(post_id: str):
     return serialize_doc(post)
 
 @app.delete("/api/posts/{post_id}")
-async def delete_post(post_id: str, token: str = Depends(lambda: None)):
+async def delete_post(post_id: str, token: str = Depends(get_token)):
     user = await get_current_user(token)
     post = await db.posts.find_one({"_id": ObjectId(post_id)})
     if not post:
@@ -419,7 +421,7 @@ async def delete_post(post_id: str, token: str = Depends(lambda: None)):
     return {"success": True}
 
 @app.post("/api/posts/{post_id}/vote")
-async def vote_post(post_id: str, vote: str, token: str = Depends(lambda: None)):
+async def vote_post(post_id: str, vote: str, token: str = Depends(get_token)):
     user = await get_current_user(token)
     post = await db.posts.find_one({"_id": ObjectId(post_id)})
     if not post:
@@ -454,7 +456,7 @@ async def vote_post(post_id: str, vote: str, token: str = Depends(lambda: None))
     return serialize_doc(updated_post)
 
 @app.post("/api/posts/{post_id}/stash")
-async def stash_post(post_id: str, token: str = Depends(lambda: None)):
+async def stash_post(post_id: str, token: str = Depends(get_token)):
     user = await get_current_user(token)
     post = await db.posts.find_one({"_id": ObjectId(post_id)})
     if not post:
@@ -484,7 +486,7 @@ async def get_comments(post_id: str):
     return [serialize_doc(c) for c in comments]
 
 @app.post("/api/comments", response_model=CommentResponse)
-async def create_comment(comment: CommentCreate, token: str = Depends(lambda: None)):
+async def create_comment(comment: CommentCreate, token: str = Depends(get_token)):
     user = await get_current_user(token)
     post = await db.posts.find_one({"_id": ObjectId(comment.postId)})
     if not post:
@@ -510,7 +512,7 @@ async def create_comment(comment: CommentCreate, token: str = Depends(lambda: No
     return serialize_doc(new_comment)
 
 @app.post("/api/comments/{comment_id}/vote")
-async def vote_comment(comment_id: str, vote: str, token: str = Depends(lambda: None)):
+async def vote_comment(comment_id: str, vote: str, token: str = Depends(get_token)):
     user = await get_current_user(token)
     comment = await db.comments.find_one({"_id": ObjectId(comment_id)})
     if not comment:
@@ -523,7 +525,7 @@ async def vote_comment(comment_id: str, vote: str, token: str = Depends(lambda: 
     return serialize_doc(updated)
 
 @app.get("/api/whispers", response_model=List[WhisperResponse])
-async def get_whispers(token: str = Depends(lambda: None)):
+async def get_whispers(token: str = Depends(get_token)):
     user = await get_current_user(token)
     whispers = await db.whispers.find({
         "$or": [{"toId": user["id"]}, {"fromId": user["id"]}]
@@ -531,7 +533,7 @@ async def get_whispers(token: str = Depends(lambda: None)):
     return [serialize_doc(w) for w in whispers]
 
 @app.post("/api/whispers", response_model=WhisperResponse)
-async def send_whisper(whisper: WhisperCreate, token: str = Depends(lambda: None)):
+async def send_whisper(whisper: WhisperCreate, token: str = Depends(get_token)):
     user = await get_current_user(token)
     
     new_whisper = {
@@ -547,13 +549,13 @@ async def send_whisper(whisper: WhisperCreate, token: str = Depends(lambda: None
     return serialize_doc(new_whisper)
 
 @app.get("/api/notifications", response_model=List[dict])
-async def get_notifications(token: str = Depends(lambda: None)):
+async def get_notifications(token: str = Depends(get_token)):
     user = await get_current_user(token)
     notifications = await db.notifications.find({"userId": user["id"]}).sort("createdAt", -1).to_list(50)
     return [serialize_doc(n) for n in notifications]
 
 @app.post("/api/notifications/{notif_id}/read")
-async def mark_notification_read(notif_id: str, token: str = Depends(lambda: None)):
+async def mark_notification_read(notif_id: str, token: str = Depends(get_token)):
     user = await get_current_user(token)
     await db.notifications.update_one(
         {"_id": ObjectId(notif_id), "userId": user["id"]},
