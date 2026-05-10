@@ -12,7 +12,15 @@ import os
 import cloudinary
 import cloudinary.uploader
 
+import logging
+
+# Setup logging to see errors in Render console
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
+
+logger.info("SHUATSPHERE API is starting up...")
 
 app = FastAPI(title="SHUATSPHERE API", version="1.0.0")
 
@@ -187,6 +195,7 @@ class WhisperResponse(BaseModel):
 
 @app.get("/")
 async def root():
+    logger.info("Root endpoint called")
     return {"message": "SHUATSPHERE API v1.0", "status": "running"}
 
 @app.post("/api/auth/register", response_model=UserResponse)
