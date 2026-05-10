@@ -82,6 +82,7 @@ export function ProfilePage() {
   const [editAvatarBg, setEditAvatarBg] = useState('b6e3f4');
   const [bannerTab, setBannerTab] = useState<'static' | 'animated'>('static');
   const [saving, setSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // *** FIX: use reactive currentUser when viewing own profile ***
   const targetUser = id
@@ -113,10 +114,9 @@ export function ProfilePage() {
 
   const openEdit = () => {
     setEditName(targetUser.name);
-    setEditBio(targetUser.bio);
+    setEditBio(targetUser.bio || '');
     setEditBanner(bannerColor);
 
-    // Parse avatar URL
     const urlStr = targetUser.avatar || '';
     const styleMatch = urlStr.match(/dicebear\.com\/8\.x\/([^/]+)\//);
     const seedMatch = urlStr.match(/seed=([^&]+)/);
@@ -126,6 +126,7 @@ export function ProfilePage() {
     setEditAvatarSeed(seedMatch ? seedMatch[1] : 'aryan');
     setEditAvatarBg(bgMatch ? bgMatch[1] : 'b6e3f4');
     setBannerTab(bannerColor.startsWith('anim:') ? 'animated' : 'static');
+    setHasChanges(false);
     setEditOpen(true);
   };
 
@@ -467,7 +468,7 @@ export function ProfilePage() {
                   <input
                     type="text"
                     value={editName}
-                    onChange={e => setEditName(e.target.value)}
+                    onChange={e => { setEditName(e.target.value); setHasChanges(true); }}
                     maxLength={50}
                     className="w-full bg-white dark:bg-[#1E1A35] border-2 border-zinc-900 dark:border-zinc-700 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:border-[#7C3AED] transition-all shadow-[2px_2px_0px_#18181B] dark:shadow-none"
                   />
@@ -478,7 +479,7 @@ export function ProfilePage() {
                   <label className="text-xs font-black uppercase tracking-wider text-zinc-500 mb-2 block">Bio</label>
                   <textarea
                     value={editBio}
-                    onChange={e => setEditBio(e.target.value)}
+                    onChange={e => { setEditBio(e.target.value); setHasChanges(true); }}
                     maxLength={160}
                     rows={3}
                     placeholder="Tell others about yourself..."
@@ -489,19 +490,21 @@ export function ProfilePage() {
               </div>
 
               {/* Save button */}
-              <div className="p-4 border-t border-zinc-200 dark:border-zinc-700">
-                <button
-                  onClick={saveEdit}
-                  disabled={saving}
-                  className="w-full py-3 rounded-2xl bg-[#7C3AED] text-white font-black border-2 border-zinc-900 shadow-[3px_3px_0px_#18181B] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {saving ? (
-                    <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <><Check size={16} /> Save Changes</>
-                  )}
-                </button>
-              </div>
+              {hasChanges && (
+                <div className="p-4 border-t border-zinc-200 dark:border-zinc-700">
+                  <button
+                    onClick={saveEdit}
+                    disabled={saving}
+                    className="w-full py-3 rounded-2xl bg-[#7C3AED] text-white font-black border-2 border-zinc-900 shadow-[3px_3px_0px_#18181B] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {saving ? (
+                      <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <><Check size={16} /> Save Changes</>
+                    )}
+                  </button>
+                </div>
+              )}
             </motion.div>
           </>
         )}

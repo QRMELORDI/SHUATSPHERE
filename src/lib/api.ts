@@ -121,6 +121,11 @@ export const api = {
   sendWhisper: (whisper: { toId: string; content: string }) =>
     fetchApi("/api/whispers", { method: "POST", body: JSON.stringify(whisper) }),
 
+  markWhisperRead: (whisperId: string) =>
+    fetchApi(`/api/whispers/${whisperId}/read`, { method: "POST" }),
+
+  getUnreadWhisperCount: () => fetchApi("/api/whispers/unread-count"),
+
   // Notifications
   getNotifications: () => fetchApi("/api/notifications"),
 
@@ -129,6 +134,8 @@ export const api = {
 
   // Search
   search: (query: string) => fetchApi(`/api/search?query=${encodeURIComponent(query)}`),
+
+  searchUsers: (query: string) => fetchApi(`/api/search/users?q=${encodeURIComponent(query)}`),
 
   // Upload
   uploadImage: async (file: File): Promise<string | null> => {

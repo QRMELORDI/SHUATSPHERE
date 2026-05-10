@@ -46,6 +46,12 @@ export function SpheresPage() {
   const [newSlug, setNewSlug] = useState('');
   const [creating, setCreating] = useState(false);
   const [createSuccess, setCreateSuccess] = useState(false);
+  const [formChanged, setFormChanged] = useState(false);
+
+  const openCreateModal = () => {
+    setFormChanged(false);
+    setShowCreate(true);
+  };
 
   const filtered = useMemo(() => {
     return spheres.filter(s => {
@@ -61,20 +67,20 @@ export function SpheresPage() {
   const handleNameChange = (v: string) => {
     setNewName(v);
     setNewSlug(autoSlug(v));
+    setFormChanged(true);
   };
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newSlug.trim()) return;
 
-    // Check duplicate slug
-    if (spheres.find(s => s.slug === newSlug)) {
+    const existingSlug = spheres.find(s => s.slug === newSlug);
+    if (existingSlug) {
       alert('A sphere with this slug already exists. Please choose a different name.');
       return;
     }
 
     setCreating(true);
-    await new Promise(r => setTimeout(r, 700));
 
     const newSphere: Omit<Sphere, 'id' | 'memberCount' | 'postCount' | 'createdAt' | 'createdBy'> = {
       name: newName.trim(),
@@ -88,7 +94,7 @@ export function SpheresPage() {
       keeper: currentUser?.id || 'user1',
     };
 
-    createSphere(newSphere);
+    await createSphere(newSphere);
     setCreating(false);
     setCreateSuccess(true);
 
@@ -101,6 +107,7 @@ export function SpheresPage() {
       setNewColor('from-violet-600 to-purple-800');
       setNewCategory('Academics');
       setNewSlug('');
+      setFormChanged(false);
       navigate(`/sphere/${newSlug}`);
     }, 1200);
   };
@@ -145,7 +152,7 @@ export function SpheresPage() {
       {/* Create sphere CTA */}
       {isLoggedIn && (
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={openCreateModal}
           className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-[#7C3AED] bg-[#7C3AED]/5 hover:bg-[#7C3AED]/10 transition-all group"
         >
           <div className="flex items-center gap-3">
@@ -281,7 +288,7 @@ export function SpheresPage() {
                       <button
                         key={emoji}
                         type="button"
-                        onClick={() => setNewIcon(emoji)}
+                        onClick={() => { setNewIcon(emoji); setFormChanged(true); }}
                         className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg border-2 transition-all ${
                           newIcon === emoji
                             ? 'border-[#7C3AED] bg-violet-50 dark:bg-violet-950/30 shadow-[2px_2px_0px_#7C3AED]'
@@ -302,7 +309,7 @@ export function SpheresPage() {
                       <button
                         key={preset.value}
                         type="button"
-                        onClick={() => setNewColor(preset.value)}
+                        onClick={() => { setNewColor(preset.value); setFormChanged(true); }}
                         className={`h-10 rounded-xl bg-gradient-to-r ${preset.value} border-2 flex items-center justify-center transition-all ${
                           newColor === preset.value
                             ? 'border-zinc-900 shadow-[2px_2px_0px_#7C3AED]'
@@ -341,7 +348,7 @@ export function SpheresPage() {
                     <input
                       type="text"
                       value={newSlug}
-                      onChange={e => setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      onChange={e => { setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setFormChanged(true); }}
                       placeholder="my-sphere"
                       maxLength={30}
                       required
@@ -357,7 +364,7 @@ export function SpheresPage() {
                   </label>
                   <textarea
                     value={newDesc}
-                    onChange={e => setNewDesc(e.target.value)}
+                    onChange={e => { setNewDesc(e.target.value); setFormChanged(true); }}
                     placeholder="What is this sphere about?"
                     maxLength={200}
                     rows={3}
@@ -373,7 +380,7 @@ export function SpheresPage() {
                   </label>
                   <select
                     value={newCategory}
-                    onChange={e => setNewCategory(e.target.value)}
+                    onChange={e => { setNewCategory(e.target.value); setFormChanged(true); }}
                     className="w-full bg-white dark:bg-[#1E1A35] border-2 border-zinc-900 dark:border-zinc-700 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:border-[#7C3AED] transition-all cursor-pointer shadow-[2px_2px_0px_#18181B] dark:shadow-none"
                   >
                     {SPHERE_CATEGORIES.map(cat => (
@@ -383,23 +390,30 @@ export function SpheresPage() {
                 </div>
 
                 {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={!newName.trim() || !newSlug.trim() || creating || createSuccess}
-                  className="w-full py-3 rounded-2xl font-black border-2 border-zinc-900 shadow-[3px_3px_0px_#18181B] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-[#7C3AED] text-white"
-                >
-                  {createSuccess ? (
-                    <>
-                      <Check size={18} /> Sphere Created!
-                    </>
-                  ) : creating ? (
-                    <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Plus size={18} /> Create Sphere
-                    </>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="submit"
+                    disabled={!newName.trim() || !newSlug.trim() || creating || createSuccess}
+                    className="w-full py-3 rounded-2xl font-black border-2 border-zinc-900 shadow-[3px_3px_0px_#18181B] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-[#7C3AED] text-white"
+                  >
+                    {createSuccess ? (
+                      <>
+                        <Check size={18} /> Sphere Created!
+                      </>
+                    ) : creating ? (
+                      <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Plus size={18} /> Create Sphere
+                      </>
+                    )}
+                  </button>
+                  {!formChanged && newName.trim() && (
+                    <p className="text-center text-xs text-zinc-500 font-semibold">
+                      Fill in the details and tap Create to make your sphere
+                    </p>
                   )}
-                </button>
+                </div>
               </form>
             </motion.div>
           </>

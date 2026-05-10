@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Post, Sphere, Notification, USERS, POSTS, SPHERES, CURRENT_USER_ID, WHISPERS, Whisper, NOTIFICATIONS } from '../data/mockData';
+import { api, setAuthToken, clearAuthToken, getAuthToken } from '../../lib/api';
+import { User, Post, Sphere, Notification, Whisper } from '../data/mockData';
 
 interface AppContextType {
   currentUser: User | null;
@@ -33,6 +34,9 @@ interface AppContextType {
   toggleTheme: () => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  refreshUser: () => Promise<void>;
+  refreshSpheres: () => Promise<void>;
+  refreshPosts: () => Promise<void>;
 }
 
 interface RegisterData {
@@ -49,27 +53,44 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [boostedPosts, setBoostedPosts] = useState<Set<string>>(new Set(['post2', 'post3']));
+  const [boostedPosts, setBoostedPosts] = useState<Set<string>>(new Set());
   const [buriedPosts, setBuriedPosts] = useState<Set<string>>(new Set());
-  const [stashedPosts, setStashedPosts] = useState<Set<string>>(new Set(['post2', 'post5', 'post12']));
+  const [stashedPosts, setStashedPosts] = useState<Set<string>>(new Set());
   const [joinedSpheres, setJoinedSpheres] = useState<Set<string>>(new Set());
-  const [posts, setPosts] = useState<Post[]>(POSTS);
-  const [whispers, setWhispers] = useState<Whisper[]>(WHISPERS);
-  const [notifications, setNotifications] = useState<Notification[]>(NOTIFICATIONS);
-  const [spheres, setSpheres] = useState<Sphere[]>(SPHERES);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [whispers, setWhispers] = useState<Whisper[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [spheres, setSpheres] = useState<Sphere[]>([]);
   const [isDark, setIsDark] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Detect system theme
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setIsDark(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
+    const init = async () => {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      setIsDark(mediaQuery.matches);
+      const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+      mediaQuery.addEventListener('change', handler);
+
+      const token = getAuthToken();
+      if (token) {
+        const result = await api.getMe();
+        if (result.data) {
+          setCurrentUser(result.data as User);
+          setIsLoggedIn(true);
+          setJoinedSpheres(new Set(result.data.joinedSpheres || []));
+        } else {
+          clearAuthToken();
+        }
+      }
+      
+      setIsLoading(false);
+      
+      return () => mediaQuery.removeEventListener('change', handler);
+    };
+    init();
   }, []);
 
-  // Apply dark class to html
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -78,6 +99,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [isDark]);
 
+  useEffect(() => {
+    if (isLoggedIn && !isLoading) {
+      loadSpheres();
+      loadPosts();
+      loadWhispers();
+      loadNotifications();
+    }
+  }, [isLoggedIn, isLoading]);
+
+  const loadSpheres = async () => {
+    const result = await api.getSpheres();
+    if (result.data) {
+      setSpheres(result.data as Sphere[]);
+    }
+  };
+
+  const loadPosts = async () => {
+    const result = await api.getPosts();
+    if (result.data) {
+      setPosts(result.data as Post[]);
+    }
+  };
+
+  const loadWhispers = async () => {
+    const result = await api.getWhispers();
+    if (result.data) {
+      setWhispers(result.data as Whisper[]);
+    }
+  };
+
+  const loadNotifications = async () => {
+    const result = await api.getNotifications();
+    if (result.data) {
+      setNotifications(result.data as Notification[]);
+    }
+  };
+
+  const refreshUser = async () => {
+    const result = await api.getMe();
+    if (result.data) {
+      setCurrentUser(result.data as User);
+      setJoinedSpheres(new Set(result.data.joinedSpheres || []));
+    }
+  };
+
+  const refreshSpheres = async () => {
+    await loadSpheres();
+  };
+
+  const refreshPosts = async () => {
+    await loadPosts();
+  };
+
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     if (!email.endsWith('@shiats.edu.in')) {
       return { success: false, error: 'Only @shiats.edu.in emails are allowed.' };
@@ -85,12 +159,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (password.length < 6) {
       return { success: false, error: 'Password must be at least 6 characters.' };
     }
-    await new Promise(res => setTimeout(res, 800));
-    const user = USERS.find(u => u.email === email) || USERS[0];
-    setCurrentUser(user);
-    setIsLoggedIn(true);
-    setJoinedSpheres(new Set(user.joinedSpheres));
-    return { success: true };
+
+    const result = await api.login({ email, password });
+    if (result.error) {
+      return { success: false, error: result.error };
+    }
+    if (result.data) {
+      setAuthToken(result.data.token);
+      setCurrentUser(result.data.user as User);
+      setIsLoggedIn(true);
+      setJoinedSpheres(new Set(result.data.user.joinedSpheres || []));
+      localStorage.setItem('shuatsphere_user', JSON.stringify(result.data.user));
+      return { success: true };
+    }
+    return { success: false, error: 'Login failed' };
   };
 
   const register = async (data: RegisterData): Promise<{ success: boolean; error?: string }> => {
@@ -103,43 +185,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!data.name || !data.username || !data.batch || !data.branch) {
       return { success: false, error: 'All fields are required.' };
     }
-    await new Promise(res => setTimeout(res, 1000));
-    const newUser: User = {
-      id: 'user_new',
-      email: data.email,
-      name: data.name,
-      username: data.username,
-      batch: data.batch,
-      branch: data.branch,
-      bio: `${data.branch} student at SHUATS, batch ${data.batch}`,
-      avatar: `https://api.dicebear.com/8.x/avataaars/svg?seed=${data.username}&backgroundColor=b6e3f4`,
-      bannerColor: 'from-violet-600 to-teal-600',
-      auraScore: 0,
-      joinDate: new Date().toISOString().split('T')[0],
-      badges: ['verified_student'],
-      joinedSpheres: ['notices'],
-      isVerified: true,
-      tag: `${data.branch} ${data.batch}`,
-    };
-    setCurrentUser(newUser);
-    setIsLoggedIn(true);
-    setJoinedSpheres(new Set(['notices']));
-    return { success: true };
+
+    const result = await api.register(data);
+    if (result.error) {
+      return { success: false, error: result.error };
+    }
+    if (result.data) {
+      const loginResult = await login(data.email, data.password);
+      if (loginResult.success) {
+        return { success: true };
+      }
+      return { success: false, error: 'Registration successful but login failed' };
+    }
+    return { success: false, error: 'Registration failed' };
   };
 
   const logout = () => {
+    clearAuthToken();
+    localStorage.removeItem('shuatsphere_user');
     setCurrentUser(null);
     setIsLoggedIn(false);
     setJoinedSpheres(new Set());
     setBoostedPosts(new Set());
     setBuriedPosts(new Set());
     setStashedPosts(new Set());
+    setWhispers([]);
+    setNotifications([]);
+    setPosts([]);
+    setSpheres([]);
   };
 
-  const toggleBoost = (postId: string) => {
+  const toggleBoost = async (postId: string) => {
+    const wasBoosted = boostedPosts.has(postId);
+    
     setBoostedPosts(prev => {
       const next = new Set(prev);
-      if (next.has(postId)) {
+      if (wasBoosted) {
         next.delete(postId);
       } else {
         next.add(postId);
@@ -151,12 +232,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
+
+    if (isLoggedIn) {
+      await api.votePost(postId, 'boost');
+    }
   };
 
-  const toggleBury = (postId: string) => {
+  const toggleBury = async (postId: string) => {
+    const wasBuried = buriedPosts.has(postId);
+    
     setBuriedPosts(prev => {
       const next = new Set(prev);
-      if (next.has(postId)) {
+      if (wasBuried) {
         next.delete(postId);
       } else {
         next.add(postId);
@@ -168,109 +255,151 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
+
+    if (isLoggedIn) {
+      await api.votePost(postId, 'bury');
+    }
   };
 
-  const toggleStash = (postId: string) => {
+  const toggleStash = async (postId: string) => {
+    const wasStashed = stashedPosts.has(postId);
+    
     setStashedPosts(prev => {
       const next = new Set(prev);
-      if (next.has(postId)) {
+      if (wasStashed) {
         next.delete(postId);
       } else {
         next.add(postId);
       }
       return next;
     });
+
+    if (isLoggedIn) {
+      await api.stashPost(postId);
+    }
   };
 
-  const toggleJoinSphere = (sphereSlug: string) => {
+  const toggleJoinSphere = async (sphereSlug: string) => {
+    const wasJoined = joinedSpheres.has(sphereSlug);
+    
     setJoinedSpheres(prev => {
       const next = new Set(prev);
-      if (next.has(sphereSlug)) {
+      if (wasJoined) {
         next.delete(sphereSlug);
       } else {
         next.add(sphereSlug);
       }
       return next;
     });
+
+    setSpheres(prev => prev.map(s => 
+      s.slug === sphereSlug 
+        ? { ...s, memberCount: s.memberCount + (wasJoined ? -1 : 1) }
+        : s
+    ));
+
+    if (isLoggedIn) {
+      if (wasJoined) {
+        await api.leaveSphere(sphereSlug);
+      } else {
+        await api.joinSphere(sphereSlug);
+      }
+    }
   };
 
-  const addPost = (postData: Omit<Post, 'id' | 'boosts' | 'buries' | 'replyCount' | 'stashCount' | 'createdAt'>) => {
-    const newPost: Post = {
-      ...postData,
-      id: `post_${Date.now()}`,
-      boosts: 1,
-      buries: 0,
-      replyCount: 0,
-      stashCount: 0,
-      createdAt: new Date().toISOString(),
-    };
-    setPosts(prev => [newPost, ...prev]);
+  const addPost = async (postData: Omit<Post, 'id' | 'boosts' | 'buries' | 'replyCount' | 'stashCount' | 'createdAt'>) => {
+    if (!isLoggedIn) return;
+    
+    const result = await api.createPost({
+      title: postData.title,
+      content: postData.content,
+      imageUrl: postData.imageUrl,
+      linkUrl: postData.linkUrl,
+      type: postData.type,
+      sphereSlug: postData.sphereSlug,
+      flair: postData.flair,
+    });
+    
+    if (result.data) {
+      setPosts(prev => [result.data as Post, ...prev]);
+      setSpheres(prev => prev.map(s => 
+        s.slug === postData.sphereSlug 
+          ? { ...s, postCount: s.postCount + 1 }
+          : s
+      ));
+    }
   };
 
-  const deletePost = (postId: string) => {
+  const deletePost = async (postId: string) => {
     setPosts(prev => prev.filter(p => p.id !== postId));
-    setStashedPosts(prev => {
-      const next = new Set(prev);
-      next.delete(postId);
-      return next;
-    });
-    setBoostedPosts(prev => {
-      const next = new Set(prev);
-      next.delete(postId);
-      return next;
-    });
-    setBuriedPosts(prev => {
-      const next = new Set(prev);
-      next.delete(postId);
-      return next;
-    });
+    
+    if (isLoggedIn) {
+      await api.deletePost(postId);
+    }
   };
 
-  const updateProfile = (data: Partial<Pick<User, 'name' | 'bio' | 'avatar' | 'bannerColor'>>) => {
-    setCurrentUser(prev => prev ? { ...prev, ...data } : prev);
+  const updateProfile = async (data: Partial<Pick<User, 'name' | 'bio' | 'avatar' | 'bannerColor'>>) => {
+    if (!isLoggedIn || !currentUser) return;
+    
+    const result = await api.updateProfile(data);
+    if (result.data) {
+      setCurrentUser(result.data as User);
+      localStorage.setItem('shuatsphere_user', JSON.stringify(result.data));
+    }
   };
 
-  const sendWhisper = (toId: string, content: string) => {
-    const newWhisper: Whisper = {
-      id: `w_${Date.now()}`,
-      fromId: currentUser?.id || CURRENT_USER_ID,
-      toId,
-      content,
-      createdAt: new Date().toISOString(),
-      read: true,
-    };
-    setWhispers(prev => [...prev, newWhisper]);
+  const sendWhisper = async (toId: string, content: string) => {
+    if (!isLoggedIn) return;
+    
+    const result = await api.sendWhisper({ toId, content });
+    if (result.data) {
+      setWhispers(prev => [...prev, result.data as Whisper]);
+    }
   };
 
-  const markWhisperRead = (whisperId: string) => {
+  const markWhisperRead = async (whisperId: string) => {
     setWhispers(prev =>
       prev.map(w => w.id === whisperId ? { ...w, read: true } : w)
     );
+    
+    if (isLoggedIn) {
+      await api.markWhisperRead(whisperId);
+    }
   };
 
-  const markNotifRead = (id: string) => {
+  const markNotifRead = async (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    
+    if (isLoggedIn) {
+      await api.markNotificationRead(id);
+    }
   };
 
   const markAllNotifsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  const createSphere = (data: Omit<Sphere, 'id' | 'memberCount' | 'postCount' | 'createdAt' | 'createdBy'>) => {
-    const newSphere: Sphere = {
-      ...data,
-      id: `sphere_${Date.now()}`,
-      memberCount: 1,
-      postCount: 0,
-      createdAt: new Date().toISOString(),
-      createdBy: currentUser?.id || CURRENT_USER_ID,
-    };
-    setSpheres(prev => [newSphere, ...prev]);
-    setJoinedSpheres(prev => new Set([...prev, newSphere.slug]));
+  const createSphere = async (data: Omit<Sphere, 'id' | 'memberCount' | 'postCount' | 'createdAt' | 'createdBy'>) => {
+    if (!isLoggedIn) return;
+    
+    const result = await api.createSphere({
+      name: data.name,
+      slug: data.slug,
+      description: data.description,
+      icon: data.icon,
+      coverColor: data.coverColor,
+      category: data.category,
+    });
+    
+    if (result.data) {
+      setSpheres(prev => [result.data as Sphere, ...prev]);
+      setJoinedSpheres(prev => new Set([...prev, data.slug]));
+      await refreshUser();
+    }
   };
 
   const unreadWhisperCount = whispers.filter(
-    w => w.toId === (currentUser?.id || CURRENT_USER_ID) && !w.read
+    w => w.toId === currentUser?.id && !w.read
   ).length;
 
   const unreadNotifCount = notifications.filter(n => !n.read).length;
@@ -310,6 +439,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleTheme,
       searchQuery,
       setSearchQuery,
+      refreshUser,
+      refreshSpheres,
+      refreshPosts,
     }}>
       {children}
     </AppContext.Provider>
