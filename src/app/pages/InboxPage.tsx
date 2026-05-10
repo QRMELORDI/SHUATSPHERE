@@ -290,7 +290,7 @@ export function InboxPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm"
               onClick={() => setShowCompose(false)}
             />
             <motion.div
@@ -298,7 +298,7 @@ export function InboxPage() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[70] bg-white dark:bg-[#0D0B1A] border-t-2 border-x-2 border-zinc-900 dark:border-zinc-700 rounded-t-3xl p-5 pb-24 space-y-3"
+              className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[9999] bg-white dark:bg-[#0D0B1A] border-t-2 border-x-2 border-zinc-900 dark:border-zinc-700 rounded-t-3xl p-5 pb-32 space-y-3"
             >
               <div className="flex items-center justify-between mb-1">
                 <h3

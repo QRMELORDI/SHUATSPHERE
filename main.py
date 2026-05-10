@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -34,10 +34,26 @@ db = client.shuatsphere
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 async def get_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     return credentials.credentials
+
+async def get_current_user(token: str):
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return serialize_doc(user)
 
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", ""),
@@ -57,20 +73,6 @@ def create_token(data: dict, expires_delta: timedelta = timedelta(days=7)):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-async def get_current_user(token: str):
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user_id = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    user = await db.users.find_one({"_id": ObjectId(user_id)})
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return serialize_doc(user)
-
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -82,6 +84,13 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    bio: Optional[str] = None
+    avatar: Optional[str] = None
+    bannerColor: Optional[str] = None
+    tag: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: str
@@ -124,6 +133,7 @@ class SphereResponse(BaseModel):
     category: str
     tags: List[str] = []
     keeper: str
+    moderators: List[str] = []
 
 class PostCreate(BaseModel):
     title: str
@@ -172,7 +182,6 @@ class CommentResponse(BaseModel):
     boosts: int = 0
     buries: int = 0
     createdAt: str
-    replies: List["CommentResponse"] = []
 
 class WhisperCreate(BaseModel):
     toId: str
@@ -181,10 +190,16 @@ class WhisperCreate(BaseModel):
 class WhisperResponse(BaseModel):
     id: str
     fromId: str
+    fromName: Optional[str] = None
     toId: str
+    toName: Optional[str] = None
     content: str
     createdAt: str
     read: bool = False
+
+class ModeratorAction(BaseModel):
+    userId: str
+    auraBonus: int = 0
 
 @app.get("/")
 async def root():
@@ -217,7 +232,7 @@ async def register(user: UserCreate):
         "auraScore": 0,
         "joinDate": datetime.utcnow().strftime("%Y-%m-%d"),
         "badges": ["verified_student"],
-        "joinedSpheres": ["notices"],
+        "joinedSpheres": [],
         "isVerified": True,
         "tag": f"{user.branch} {user.batch}",
     }
@@ -239,8 +254,6 @@ async def login(user: UserLogin):
 
 @app.get("/api/auth/me", response_model=UserResponse)
 async def get_me(token: str = Depends(get_token)):
-    if not token:
-        raise HTTPException(status_code=401, detail="No token provided")
     user = await get_current_user(token)
     return user
 
@@ -251,13 +264,22 @@ async def get_user(user_id: str):
         raise HTTPException(status_code=404, detail="User not found")
     return serialize_doc(user)
 
+@app.get("/api/users/username/{username}", response_model=UserResponse)
+async def get_user_by_username(username: str):
+    user = await db.users.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return serialize_doc(user)
+
 @app.put("/api/users/me", response_model=UserResponse)
-async def update_me(data: dict, token: str = Depends(get_token)):
+async def update_me(data: UserUpdate, token: str = Depends(get_token)):
     user = await get_current_user(token)
-    await db.users.update_one(
-        {"_id": ObjectId(user["id"])},
-        {"$set": data}
-    )
+    update_data = {k: v for k, v in data.dict().items() if v is not None}
+    if update_data:
+        await db.users.update_one(
+            {"_id": ObjectId(user["id"])},
+            {"$set": update_data}
+        )
     updated = await db.users.find_one({"_id": ObjectId(user["id"])})
     return serialize_doc(updated)
 
@@ -297,6 +319,7 @@ async def create_sphere(sphere: SphereCreate, token: str = Depends(get_token)):
         "category": sphere.category,
         "tags": [sphere.name],
         "keeper": user["id"],
+        "moderators": [],
     }
     result = await db.spheres.insert_one(new_sphere)
     new_sphere["_id"] = result.inserted_id
@@ -322,15 +345,17 @@ async def join_sphere(slug: str, token: str = Depends(get_token)):
     if not sphere:
         raise HTTPException(status_code=404, detail="Sphere not found")
     
-    await db.users.update_one(
-        {"_id": ObjectId(user["id"])},
-        {"$addToSet": {"joinedSpheres": slug}}
-    )
-    await db.spheres.update_one(
-        {"_id": sphere["_id"]},
-        {"$inc": {"memberCount": 1}}
-    )
-    return {"success": True}
+    if slug not in user.get("joinedSpheres", []):
+        await db.users.update_one(
+            {"_id": ObjectId(user["id"])},
+            {"$addToSet": {"joinedSpheres": slug}}
+        )
+        await db.spheres.update_one(
+            {"_id": sphere["_id"]},
+            {"$inc": {"memberCount": 1}}
+        )
+    
+    return {"success": True, "message": f"Joined {sphere['name']}"}
 
 @app.post("/api/spheres/{slug}/leave")
 async def leave_sphere(slug: str, token: str = Depends(get_token)):
@@ -339,30 +364,102 @@ async def leave_sphere(slug: str, token: str = Depends(get_token)):
     if not sphere:
         raise HTTPException(status_code=404, detail="Sphere not found")
     
-    await db.users.update_one(
-        {"_id": ObjectId(user["id"])},
-        {"$pull": {"joinedSpheres": slug}}
-    )
-    await db.spheres.update_one(
-        {"_id": sphere["_id"]},
-        {"$inc": {"memberCount": -1}}
-    )
-    return {"success": True}
+    if sphere["keeper"] == user["id"]:
+        raise HTTPException(status_code=400, detail="Owner cannot leave their own sphere")
+    
+    if slug in user.get("joinedSpheres", []):
+        await db.users.update_one(
+            {"_id": ObjectId(user["id"])},
+            {"$pull": {"joinedSpheres": slug}}
+        )
+        await db.spheres.update_one(
+            {"_id": sphere["_id"]},
+            {"$inc": {"memberCount": -1}}
+        )
+        
+        if user["id"] in sphere.get("moderators", []):
+            await db.spheres.update_one(
+                {"_id": sphere["_id"]},
+                {"$pull": {"moderators": user["id"]}}
+            )
+    
+    return {"success": True, "message": f"Left {sphere['name']}"}
+
+@app.post("/api/spheres/{slug}/moderators")
+async def add_moderator(slug: str, action: ModeratorAction, token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    sphere = await db.spheres.find_one({"slug": slug})
+    if not sphere:
+        raise HTTPException(status_code=404, detail="Sphere not found")
+    
+    is_owner = sphere["keeper"] == user["id"]
+    is_moderator = user["id"] in sphere.get("moderators", [])
+    
+    if not is_owner and not is_moderator:
+        raise HTTPException(status_code=403, detail="Only owner or moderators can manage moderators")
+    
+    target_user = await db.users.find_one({"_id": ObjectId(action.userId)})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if target_user["id"] == sphere["keeper"]:
+        raise HTTPException(status_code=400, detail="Cannot modify owner's moderator status")
+    
+    moderators = sphere.get("moderators", [])
+    
+    if action.userId not in moderators:
+        await db.spheres.update_one(
+            {"_id": sphere["_id"]},
+            {"$addToSet": {"moderators": action.userId}}
+        )
+        if slug not in target_user.get("joinedSpheres", []):
+            await db.users.update_one(
+                {"_id": ObjectId(action.userId)},
+                {"$addToSet": {"joinedSpheres": slug}}
+            )
+            await db.spheres.update_one(
+                {"_id": sphere["_id"]},
+                {"$inc": {"memberCount": 1}}
+            )
+        message = f"Added {target_user['name']} as moderator"
+    else:
+        await db.spheres.update_one(
+            {"_id": sphere["_id"]},
+            {"$pull": {"moderators": action.userId}}
+        )
+        if slug in target_user.get("joinedSpheres", []):
+            await db.users.update_one(
+                {"_id": ObjectId(action.userId)},
+                {"$pull": {"joinedSpheres": slug}}
+            )
+            await db.spheres.update_one(
+                {"_id": sphere["_id"]},
+                {"$inc": {"memberCount": -1}}
+            )
+        message = f"Removed {target_user['name']} from moderators (left sphere)"
+    
+    if action.auraBonus > 0:
+        await db.users.update_one(
+            {"_id": ObjectId(action.userId)},
+            {"$inc": {"auraScore": action.auraBonus}}
+        )
+        message += f" with +{action.auraBonus} aura"
+    
+    updated_sphere = await db.spheres.find_one({"slug": slug})
+    return {"success": True, "message": message, "sphere": serialize_doc(updated_sphere)}
 
 @app.get("/api/posts", response_model=List[PostResponse])
-async def get_posts(sphere: Optional[str] = None, sort: str = "trending", limit: int = 50):
+async def get_posts(sphere: Optional[str] = None, sort: str = "latest", limit: int = 50):
     query = {}
     if sphere:
         query["sphereSlug"] = sphere
     
-    posts = await db.posts.find(query).to_list(limit)
+    posts = await db.posts.find(query).sort("createdAt", -1).limit(limit).to_list(limit)
     
-    if sort == "latest":
-        posts.sort(key=lambda x: x.get("createdAt", ""), reverse=True)
-    elif sort == "top":
+    if sort == "top":
         posts.sort(key=lambda x: x.get("boosts", 0) - x.get("buries", 0), reverse=True)
-    else:
-        posts.sort(key=lambda x: x.get("boosts", 0) / max(1, (datetime.utcnow() - x.get("createdAt", datetime.utcnow())).total_seconds() / 3600), reverse=True)
+    elif sort == "trending":
+        posts.sort(key=lambda x: x.get("boosts", 0) / max(1, (datetime.utcnow() - datetime.fromisoformat(x.get("createdAt", datetime.utcnow().isoformat()))).total_seconds() / 3600 + 1), reverse=True)
     
     return [serialize_doc(p) for p in posts]
 
@@ -372,6 +469,9 @@ async def create_post(post: PostCreate, token: str = Depends(get_token)):
     sphere = await db.spheres.find_one({"slug": post.sphereSlug})
     if not sphere:
         raise HTTPException(status_code=404, detail="Sphere not found")
+    
+    if post.sphereSlug not in user.get("joinedSpheres", []):
+        raise HTTPException(status_code=403, detail="You must join this sphere before posting")
     
     new_post = {
         "title": post.title,
@@ -417,11 +517,39 @@ async def delete_post(post_id: str, token: str = Depends(get_token)):
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     
-    if post["authorId"] != user["id"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    sphere = await db.spheres.find_one({"slug": post["sphereSlug"]})
+    is_moderator = sphere and (post["authorId"] == user["id"] or user["id"] == sphere.get("keeper") or user["id"] in sphere.get("moderators", []))
+    
+    if not is_moderator:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this post")
     
     await db.posts.delete_one({"_id": ObjectId(post_id)})
+    
+    await db.spheres.update_one(
+        {"_id": sphere["_id"]},
+        {"$inc": {"postCount": -1}}
+    )
+    
     return {"success": True}
+
+@app.post("/api/posts/{post_id}/pin")
+async def pin_post(post_id: str, token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    post = await db.posts.find_one({"_id": ObjectId(post_id)})
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    sphere = await db.spheres.find_one({"slug": post["sphereSlug"]})
+    if not sphere or (user["id"] != sphere.get("keeper") and user["id"] not in sphere.get("moderators", [])):
+        raise HTTPException(status_code=403, detail="Only sphere owner or moderators can pin posts")
+    
+    await db.posts.update_one(
+        {"_id": ObjectId(post_id)},
+        {"$set": {"isPinned": not post.get("isPinned", False)}}
+    )
+    
+    updated = await db.posts.find_one({"_id": ObjectId(post_id)})
+    return {"success": True, "isPinned": updated.get("isPinned", False)}
 
 @app.post("/api/posts/{post_id}/vote")
 async def vote_post(post_id: str, vote: str, token: str = Depends(get_token)):
@@ -439,12 +567,17 @@ async def vote_post(post_id: str, vote: str, token: str = Depends(get_token)):
         if existing_vote["vote"] == vote:
             await db.votes.delete_one({"_id": existing_vote["_id"]})
             update = {"$inc": {f"{vote}s": -1}}
+            await db.users.update_one({"_id": ObjectId(post["authorId"])}, {"$inc": {"auraScore": -1}})
         else:
             await db.votes.update_one(
                 {"_id": existing_vote["_id"]},
                 {"$set": {"vote": vote}}
             )
             update = {"$inc": {f"{vote}s": 1, f"{'boost' if vote == 'bury' else 'bury'}s": -1}}
+            if vote == "boost":
+                await db.users.update_one({"_id": ObjectId(post["authorId"])}, {"$inc": {"auraScore": 2}})
+            else:
+                await db.users.update_one({"_id": ObjectId(post["authorId"])}, {"$inc": {"auraScore": -2}})
     else:
         await db.votes.insert_one({
             "userId": user["id"],
@@ -453,6 +586,10 @@ async def vote_post(post_id: str, vote: str, token: str = Depends(get_token)):
             "createdAt": datetime.utcnow().isoformat()
         })
         update = {"$inc": {f"{vote}s": 1}}
+        if vote == "boost":
+            await db.users.update_one({"_id": ObjectId(post["authorId"])}, {"$inc": {"auraScore": 1}})
+        else:
+            await db.users.update_one({"_id": ObjectId(post["authorId"])}, {"$inc": {"auraScore": -1}})
     
     await db.posts.update_one({"_id": ObjectId(post_id)}, update)
     updated_post = await db.posts.find_one({"_id": ObjectId(post_id)})
@@ -519,10 +656,12 @@ async def vote_comment(comment_id: str, vote: str, token: str = Depends(get_toke
     user = await get_current_user(token)
     comment = await db.comments.find_one({"_id": ObjectId(comment_id)})
     if not comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        raise HTTPException(status_code=404, detail="Post not found")
     
     update = {"$inc": {f"{vote}s": 1}}
     await db.comments.update_one({"_id": ObjectId(comment_id)}, update)
+    
+    await db.users.update_one({"_id": ObjectId(comment["authorId"])}, {"$inc": {"auraScore": 1 if vote == "boost" else -1}})
     
     updated = await db.comments.find_one({"_id": ObjectId(comment_id)})
     return serialize_doc(updated)
@@ -533,11 +672,29 @@ async def get_whispers(token: str = Depends(get_token)):
     whispers = await db.whispers.find({
         "$or": [{"toId": user["id"]}, {"fromId": user["id"]}]
     }).sort("createdAt", -1).to_list(50)
-    return [serialize_doc(w) for w in whispers]
+    
+    result = []
+    for w in whispers:
+        serialized = serialize_doc(w)
+        if w["fromId"] == user["id"]:
+            target = await db.users.find_one({"_id": ObjectId(w["toId"])})
+            serialized["toName"] = target["name"] if target else "Unknown"
+            serialized["fromName"] = user["name"]
+        else:
+            sender = await db.users.find_one({"_id": ObjectId(w["fromId"])})
+            serialized["fromName"] = sender["name"] if sender else "Unknown"
+            serialized["toName"] = user["name"]
+        result.append(serialized)
+    
+    return result
 
 @app.post("/api/whispers", response_model=WhisperResponse)
 async def send_whisper(whisper: WhisperCreate, token: str = Depends(get_token)):
     user = await get_current_user(token)
+    
+    target = await db.users.find_one({"_id": ObjectId(whisper.toId)})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
     
     new_whisper = {
         "fromId": user["id"],
@@ -549,7 +706,34 @@ async def send_whisper(whisper: WhisperCreate, token: str = Depends(get_token)):
     result = await db.whispers.insert_one(new_whisper)
     new_whisper["_id"] = result.inserted_id
     
-    return serialize_doc(new_whisper)
+    serialized = serialize_doc(new_whisper)
+    serialized["fromName"] = user["name"]
+    serialized["toName"] = target["name"]
+    
+    return serialized
+
+@app.post("/api/whispers/{whisper_id}/read")
+async def mark_whisper_read(whisper_id: str, token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    whisper = await db.whispers.find_one({"_id": ObjectId(whisper_id)})
+    if not whisper:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    if whisper["toId"] != user["id"]:
+        raise HTTPException(status_code=403, detail="Cannot mark this message as read")
+    
+    await db.whispers.update_one(
+        {"_id": ObjectId(whisper_id)},
+        {"$set": {"read": True}}
+    )
+    
+    return {"success": True}
+
+@app.get("/api/whispers/unread-count")
+async def get_unread_count(token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    count = await db.whispers.count_documents({"toId": user["id"], "read": False})
+    return {"count": count}
 
 @app.get("/api/notifications", response_model=List[dict])
 async def get_notifications(token: str = Depends(get_token)):
@@ -565,6 +749,16 @@ async def mark_notification_read(notif_id: str, token: str = Depends(get_token))
         {"$set": {"read": True}}
     )
     return {"success": True}
+
+@app.get("/api/search/users")
+async def search_users(q: str, token: str = Depends(get_token)):
+    users = await db.users.find({
+        "$or": [
+            {"name": {"$regex": q, "$options": "i"}},
+            {"username": {"$regex": q, "$options": "i"}}
+        ]
+    }).to_list(20)
+    return [serialize_doc(u) for u in users]
 
 @app.get("/api/search")
 async def search(query: str):
@@ -598,29 +792,31 @@ async def upload_image(file: bytes = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
-@app.get("/api/seed")
-async def seed_database():
-    default_spheres = [
-        {"name": "CSE 2025", "slug": "cse-2025", "description": "Community for CSE batch of 2025", "icon": "💻", "coverColor": "from-violet-600 to-purple-800", "category": "Academics"},
-        {"name": "CSE 2026", "slug": "cse-2026", "description": "First years CSE!", "icon": "🎓", "coverColor": "from-blue-600 to-cyan-700", "category": "Academics"},
-        {"name": "DSA Practice", "slug": "dsa", "description": "Data Structures & Algorithms", "icon": "🧩", "coverColor": "from-green-600 to-emerald-800", "category": "Academics"},
-        {"name": "Sports Zone", "slug": "sports", "description": "All sports discussions", "icon": "🏏", "coverColor": "from-orange-500 to-red-600", "category": "Sports"},
-        {"name": "Hostel A", "slug": "hostel-a", "description": "Hostel A residents", "icon": "🏠", "coverColor": "from-yellow-500 to-amber-700", "category": "Campus Life"},
-        {"name": "Library Corner", "slug": "library", "description": "Book recommendations", "icon": "📚", "coverColor": "from-teal-600 to-cyan-800", "category": "Academics"},
-        {"name": "Official Notices", "slug": "notices", "description": "Official announcements", "icon": "📢", "coverColor": "from-red-500 to-rose-700", "category": "Official"},
-        {"name": "Events Hub", "slug": "events", "description": "Fests and events", "icon": "🎉", "coverColor": "from-pink-500 to-purple-600", "category": "Events"},
-    ]
+@app.post("/api/clear-posts")
+async def clear_all_posts(token: str = Depends(get_token)):
+    user = await get_current_user(token)
     
-    for sphere in default_spheres:
-        existing = await db.spheres.find_one({"slug": sphere["slug"]})
-        if not existing:
-            sphere["memberCount"] = 100
-            sphere["postCount"] = 10
-            sphere["createdBy"] = "system"
-            sphere["createdAt"] = datetime.utcnow().isoformat()
-            sphere["isPrivate"] = False
-            sphere["tags"] = [sphere["name"]]
-            sphere["keeper"] = "system"
-            await db.spheres.insert_one(sphere)
+    if user.get("email") != "owner@shiats.edu.in":
+        raise HTTPException(status_code=403, detail="Only admin can clear posts")
     
-    return {"message": "Database seeded successfully"}
+    result = await db.posts.delete_many({})
+    await db.spheres.update_many({}, {"$set": {"postCount": 0}})
+    
+    return {"success": True, "deleted": result.deleted_count}
+
+@app.post("/api/clear-seed-data")
+async def clear_seed_data(token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    
+    if user.get("email") != "owner@shiats.edu.in":
+        raise HTTPException(status_code=403, detail="Only admin can clear data")
+    
+    await db.spheres.delete_many({})
+    await db.posts.delete_many({})
+    await db.comments.delete_many({})
+    await db.votes.delete_many({})
+    await db.stashes.delete_many({})
+    await db.whispers.delete_many({})
+    await db.notifications.delete_many({})
+    
+    return {"success": True, "message": "All demo data cleared"}
