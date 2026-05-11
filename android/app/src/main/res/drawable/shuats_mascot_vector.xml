@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Outer glow ring -->
+    <group android:pivotX="100" android:pivotY="100">
+        <path
+            android:pathData="M100,20 A80,80 0 1,1 99.99,20"
+            android:strokeWidth="3"
+            android:strokeColor="#7C3AED"
+            android:fillColor="#00000000"
+            android:strokeAlpha="0.5"/>
+        <path
+            android:pathData="M100,30 A70,70 0 1,1 99.99,30"
+            android:strokeWidth="2"
+            android:strokeColor="#2DD4BF"
+            android:fillColor="#00000000"
+            android:strokeAlpha="0.4"/>
+        <path
+            android:pathData="M100,40 A60,60 0 1,1 99.99,40"
+            android:strokeWidth="1.5"
+            android:strokeColor="#F472B6"
+            android:fillColor="#00000000"
+            android:strokeAlpha="0.3"/>
+    </group>
+
+    <!-- Main body - cosmic sphere -->
+    <path
+        android:pathData="M100,55 A45,45 0 1,1 99.99,55"
+        android:fillColor="#7C3AED"/>
+
+    <!-- Inner gradient effect -->
+    <path
+        android:pathData="M100,60 A35,35 0 1,1 99.99,60"
+        android:fillColor="#A78BFA"
+        android:fillAlpha="0.3"/>
+
+    <!-- Face - dark humanoid face -->
+    <path
+        android:pathData="M75,85 Q75,70 100,70 Q125,70 125,85 L125,110 Q125,120 100,120 Q75,120 75,110 Z"
+        android:fillColor="#0D0B1A"/>
+
+    <!-- Eyes - expressive -->
+    <path
+        android:pathData="M82,90 A6,8 0 1,1 82.01,90"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M118,90 A6,8 0 1,1 118.01,90"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Pupils -->
+    <path
+        android:pathData="M84,88 A3,4 0 1,1 84.01,88"
+        android:fillColor="#7C3AED"/>
+    <path
+        android:pathData="M120,88 A3,4 0 1,1 120.01,88"
+        android:fillColor="#7C3AED"/>
+
+    <!-- Eye highlights -->
+    <path
+        android:pathData="M80,86 A1.5,1.5 0 1,1 80.01,86"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M116,86 A1.5,1.5 0 1,1 116.01,86"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Unique antenna - cosmic antenna -->
+    <path
+        android:pathData="M100,55 Q95,35 85,25"
+        android:strokeWidth="4"
+        android:strokeColor="#2DD4BF"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M85,25 A8,8 0 1,1 85.01,25"
+        android:fillColor="#2DD4BF"/>
+    <path
+        android:pathData="M83,22 A3,3 0 1,1 83.01,22"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.8"/>
+
+    <!-- Side celestial orbs -->
+    <path
+        android:pathData="M55,80 A15,15 0 1,1 55.01,80"
+        android:fillColor="#F472B6"
+        android:fillAlpha="0.7"/>
+    <path
+        android:pathData="M145,80 A15,15 0 1,1 145.01,80"
+        android:fillColor="#2DD4BF"
+        android:fillAlpha="0.7"/>
+
+    <!-- Smile - friendly expression -->
+    <path
+        android:pathData="M85,108 Q100,118 115,108"
+        android:strokeWidth="3"
+        android:strokeColor="#7C3AED"
+        android:strokeLineCap="round"/>
+
+    <!-- Blush marks -->
+    <path
+        android:pathData="M70,100 Q75,105 70,110"
+        android:strokeWidth="2"
+        android:strokeColor="#F472B6"
+        android:strokeAlpha="0.5"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M130,100 Q135,105 130,110"
+        android:strokeWidth="2"
+        android:strokeColor="#F472B6"
+        android:strokeAlpha="0.5"
+        android:strokeLineCap="round"/>
+
+    <!-- Floating particles -->
+    <path
+        android:pathData="M60,50 A4,4 0 1,1 60.01,50"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M140,50 A3,3 0 1,1 140.01,50"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M70,140 A3,3 0 1,1 70.01,140"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M130,140 A4,4 0 1,1 130.01,140"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Crown/tiara - royal touch -->
+    <path
+        android:pathData="M80,55 L85,45 L90,50 L95,40 L100,48 L105,40 L110,50 L115,45 L120,55"
+        android:strokeWidth="2"
+        android:strokeColor="#FFD700"
+        android:strokeLineJoin="round"/>
+
+</vector>

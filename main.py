@@ -25,6 +25,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/api/version")
+async def get_version():
+    return {
+        "version": "1.0.0",
+        "minVersion": "1.0.0",
+        "updateUrl": "https://play.google.com/store/apps/details?id=com.shuatsphere.app",
+        "forceUpdate": False
+    }
+
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 JWT_SECRET = os.getenv("JWT_SECRET", "shuatsphere-super-secret-key-change-in-production")
 JWT_ALGORITHM = "HS256"
@@ -801,10 +810,7 @@ async def search(query: str):
     }
 
 @app.post("/api/upload")
-async def upload_image(file: bytes = None):
-    if not file:
-        raise HTTPException(status_code=400, detail="No file provided")
-    
+async def upload_image(file: bytes = Body(...)):
     try:
         result = cloudinary.uploader.upload(file, folder="shuatsphere")
         return {"url": result["secure_url"]}

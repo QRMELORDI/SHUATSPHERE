@@ -84,7 +84,7 @@ export function ForgotPasswordPage() {
             <SphereLogo size={56} />
           </div>
           <h1 className="font-black text-2xl text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>
-            Recover <span className="text-[#7C3AED]">Sphere</span> Account
+            Recover <span className="text-[#7C3AED]">Schwartzpear</span> Account
           </h1>
           <p className="text-sm text-zinc-500 font-semibold mt-1">Enter your details to set a new password</p>
         </div>

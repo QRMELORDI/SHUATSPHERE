@@ -630,3 +630,13 @@ async def seed_database():
             await db.spheres.insert_one(sphere)
     
     return {"message": "Database seeded successfully"}
+
+@app.get("/api/version")
+async def get_version():
+    return {
+        "version": "1.0.0",
+        "minVersion": "1.0.0",
+        "updateUrl": "https://play.google.com/store/apps/details?id=com.shuatsphere.app",
+        "forceUpdate": False,
+        "releaseNotes": "✨ Gen Z animations added\n🎮 New avatar system\n🚀 Performance improvements"
+    }

@@ -13,7 +13,7 @@ const config: CapacitorConfig = {
     scheme: 'shuatsphere',
   },
   android: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0D0B1A',
     allowBackup: true,
     fullScreen: false,
     captureInput: false,
@@ -21,6 +21,22 @@ const config: CapacitorConfig = {
     minifyEnabled: false,
     buildOptions: {
       suppressBuildWarnings: false,
+    },
+  },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 3000,
+      launchFadeOutDuration: 500,
+      backgroundColor: '#0D0B1A',
+      androidSplashResourceName: 'splash',
+      androidSplashTheme: '@style/AppTheme.Splash',
+      showSpinner: true,
+      spinnerColor: '#7C3AED',
+    },
+    Updater: {
+      autoAutoUpdate: true,
+      autoUpdateUrl: 'https://shuatsphere-updates.onrender.com/api/updates',
+      updateApi: 'https://shuatsphere-updates.onrender.com/api/updates',
     },
   },
 };

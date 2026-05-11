@@ -60,12 +60,23 @@ export function LoginPage() {
         {/* Brand */}
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <SphereLogo size={64} />
+            <SphereLogo size={64} animated />
           </div>
-          <h1 className="text-white font-black text-3xl" style={{ fontFamily: 'Outfit, sans-serif' }}>
-            <span className="text-[#A78BFA]">SHUAT</span><span className="text-[#2DD4BF]">SPHERE</span>
-          </h1>
-          <p className="text-zinc-400 text-sm font-semibold">Your SHUATS student universe 🌐</p>
+          <motion.h1 
+            className="text-white font-black text-3xl" 
+            style={{ fontFamily: 'Outfit, sans-serif' }}
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >
+            <span className="text-[#A78BFA]">Schwartz</span><span className="text-[#2DD4BF]">pear</span>
+          </motion.h1>
+          <motion.p 
+            className="text-zinc-400 text-sm font-semibold"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 2.5, repeat: Infinity }}
+          >
+            Schwartzpeople here
+          </motion.p>
         </div>
 
         {/* Form */}

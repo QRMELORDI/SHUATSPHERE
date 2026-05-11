@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SHUATSPHERE Avatar Bundle</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: linear-gradient(135deg, #0D0B1A 0%, #1a1529 100%); 
+      min-height: 100vh; 
+      padding: 40px 20px;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 {
+      text-align: center;
+      font-size: 2.5rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+      background: linear-gradient(90deg, #7C3AED, #2DD4BF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: #71717a;
+      margin-bottom: 50px;
+      font-size: 1.1rem;
+    }
+    .section {
+      margin-bottom: 50px;
+    }
+    .section-title {
+      color: #fff;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::before {
+      content: '✨';
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 20px;
+    }
+    .avatar-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.3s;
+      border: 2px solid transparent;
+    }
+    .avatar-card:hover {
+      background: rgba(255,255,255,0.1);
+      transform: translateY(-5px);
+      border-color: #7C3AED;
+    }
+    .avatar-card svg {
+      width: 100px;
+      height: 100px;
+    }
+    .avatar-name {
+      color: #a1a1aa;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    .download-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: #7C3AED;
+      color: white;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+    .download-btn:hover {
+      background: #6D28D9;
+    }
+    .info-box {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(45, 212, 191, 0.2));
+      border-radius: 20px;
+      padding: 25px;
+      margin-top: 40px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .info-box h3 {
+      color: #fff;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+    }
+    .info-box p {
+      color: #a1a1aa;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SHUATSPHERE AVATARS</h1>
+    <p class="subtitle">Parallel Universe Identity System</p>
+
+    <div class="section">
+      <h2 class="section-title">Boys Collection</h2>
+      <div class="grid">
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="b1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#4C1D95"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#b1)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#EABC95"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#D4A574"/><circle cx="80" cy="95" r="8" fill="#1A1A1A"/><circle cx="120" cy="95" r="8" fill="#1A1A1A"/><circle cx="82" cy="93" r="3" fill="#FFFFFF"/><circle cx="122" cy="93" r="3" fill="#FFFFFF"/><path d="M85 130 Q100 145 115 130" stroke="#1A1A1A" stroke-width="3" fill="none"/><path d="M60 60 Q100 20 140 60 Q150 80 140 90 Q100 70 60 90 Q50 80 60 60" fill="#8B5A2B"/></svg>
+          <p class="avatar-name">Cosmic Boy</p>
+          <a href="boys/boy-1.svg" download class="download-btn">Download</a>
+        </div>
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="b2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2DD4BF"/><stop offset="100%" stop-color="#0D9488"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#b2)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#FFE0BD"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#FFCD94"/><ellipse cx="80" cy="95" rx="10" ry="6" fill="#1A1A1A"/><ellipse cx="120" cy="95" rx="10" ry="6" fill="#1A1A1A"/><circle cx="82" cy="93" r="2" fill="#FFFFFF"/><circle cx="122" cy="93" r="2" fill="#FFFFFF"/><circle cx="100" cy="135" r="8" fill="#1A1A1A"/><ellipse cx="100" cy="55" rx="55" ry="30" fill="#FF6B6B"/><path d="M55 60 Q100 30 145 60" fill="#FF6B6B"/></svg>
+          <p class="avatar-name">Nebula Boy</p>
+          <a href="boys/boy-2.svg" download class="download-btn">Download</a>
+        </div>
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="b3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F472B6"/><stop offset="100%" stop-color="#DB2777"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#b3)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#5C3D2E"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#3B2219"/><path d="M70 90 Q80 85 90 90" stroke="#1A1A1A" stroke-width="3" fill="none"/><path d="M110 90 Q120 85 130 90" stroke="#1A1A1A" stroke-width="3" fill="none"/><circle cx="80" cy="95" r="4" fill="#1A1A1A"/><circle cx="120" cy="95" r="4" fill="#1A1A1A"/><path d="M85 130 Q100 120 115 130" stroke="#1A1A1A" stroke-width="3" fill="none"/><path d="M50 80 Q60 30 100 25 Q140 30 150 80 L150 100 Q100 70 50 100 Z" fill="#1A1A1A"/></svg>
+          <p class="avatar-name">Void Boy</p>
+          <a href="boys/boy-3.svg" download class="download-btn">Download</a>
+        </div>
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="b4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#2563EB"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#b4)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#FFCD94"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#FFE0BD"/><circle cx="80" cy="92" r="10" fill="#FFFFFF"/><circle cx="120" cy="92" r="10" fill="#FFFFFF"/><circle cx="80" cy="92" r="7" fill="#D4A574"/><circle cx="120" cy="92" r="7" fill="#D4A574"/><circle cx="80" cy="90" r="3" fill="#1A1A1A"/><circle cx="120" cy="90" r="3" fill="#1A1A1A"/><ellipse cx="100" cy="135" rx="10" ry="6" fill="#FF6B6B"/><path d="M45 100 L55 50 Q100 20 145 50 L155 100" fill="#FFD700"/><circle cx="55" cy="55" r="8" fill="#FFD700"/><circle cx="145" cy="55" r="8" fill="#FFD700"/></svg>
+          <p class="avatar-name">Galaxy Boy</p>
+          <a href="boys/boy-4.svg" download class="download-btn">Download</a>
+        </div>
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="b5" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FB923C"/><stop offset="100%" stop-color="#EA580C"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#b5)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#C68642"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#8D5524"/><circle cx="80" cy="92" r="10" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2"/><circle cx="120" cy="92" r="10" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2"/><circle cx="80" cy="92" r="6" fill="#4B0082"/><circle cx="120" cy="92" r="6" fill="#4B0082"/><path d="M85 130 Q100 140 115 130" stroke="#1A1A1A" stroke-width="2" fill="none"/><path d="M88 132 Q100 138 112 132" stroke="#FF6B6B" stroke-width="2" fill="none"/><path d="M40 110 Q60 40 100 35 Q140 40 160 110" fill="#00CED1"/><path d="M45 100 Q100 60 155 100" fill="#00CED1"/><circle cx="100" cy="70" r="25" fill="none" stroke="#1A1A1A" stroke-width="3"/></svg>
+          <p class="avatar-name">Stellar Boy</p>
+          <a href="boys/boy-5.svg" download class="download-btn">Download</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Girls Collection</h2>
+      <div class="grid">
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#A78BFA"/><stop offset="100%" stop-color="#7C3AED"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#g1)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#FFE0BD"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#FFCD94"/><circle cx="80" cy="95" r="8" fill="#1A1A1A"/><circle cx="120" cy="95" r="8" fill="#1A1A1A"/><circle cx="82" cy="93" r="3" fill="#FFFFFF"/><circle cx="122" cy="93" r="3" fill="#FFFFFF"/><line x1="85" y1="135" x2="115" y2="135" stroke="#1A1A1A" stroke-width="3"/><ellipse cx="100" cy="50" rx="60" ry="35" fill="#9400D3"/><path d="M40 80 Q100 40 160 80" fill="#9400D3"/></svg>
+          <p class="avatar-name">Cosmic Girl</p>
+          <a href="girls/girl-1.svg" download class="download-btn">Download</a>
+        </div>
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34D399"/><stop offset="100%" stop-color="#059669"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#g2)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#C68642"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#8D5524"/><ellipse cx="80" cy="95" rx="10" ry="6" fill="#1A1A1A"/><ellipse cx="120" cy="95" rx="10" ry="6" fill="#1A1A1A"/><circle cx="82" cy="93" r="2" fill="#FFFFFF"/><circle cx="122" cy="93" r="2" fill="#FFFFFF"/><path d="M85 130 Q100 145 115 130" stroke="#1A1A1A" stroke-width="3" fill="none"/><path d="M35 120 Q50 40 100 35 Q150 40 165 120 L165 160 Q100 150 35 160 Z" fill="#FF69B4"/></svg>
+          <p class="avatar-name">Nebula Girl</p>
+          <a href="girls/girl-2.svg" download class="download-btn">Download</a>
+        </div>
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#EC4899"/><stop offset="100%" stop-color="#BE185D"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#g3)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#D4A574"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#C68642"/><path d="M70 90 Q80 85 90 90" stroke="#1A1A1A" stroke-width="3" fill="none"/><path d="M110 90 Q120 85 130 90" stroke="#1A1A1A" stroke-width="3" fill="none"/><circle cx="80" cy="95" r="4" fill="#1A1A1A"/><circle cx="120" cy="95" r="4" fill="#1A1A1A"/><circle cx="100" cy="135" r="8" fill="#1A1A1A"/><ellipse cx="100" cy="45" rx="55" ry="30" fill="#FFFFFF"/><path d="M45 90 Q30 130 40 160 Q100 170 160 160 Q170 130 155 90" fill="#FFFFFF"/></svg>
+          <p class="avatar-name">Void Girl</p>
+          <a href="girls/girl-3.svg" download class="download-btn">Download</a>
+        </div>
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="g4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FBBF24"/><stop offset="100%" stop-color="#D97706"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#g4)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#EABC95"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#D4A574"/><circle cx="80" cy="92" r="10" fill="#FFFFFF"/><circle cx="120" cy="92" r="10" fill="#FFFFFF"/><circle cx="80" cy="92" r="7" fill="#8B4513"/><circle cx="120" cy="92" r="7" fill="#8B4513"/><circle cx="80" cy="90" r="3" fill="#1A1A1A"/><circle cx="120" cy="90" r="3" fill="#1A1A1A"/><path d="M85 130 Q100 120 115 130" stroke="#1A1A1A" stroke-width="3" fill="none"/><circle cx="100" cy="50" r="55" fill="#B8860B"/><path d="M45 70 Q100 50 155 70" fill="#B8860B"/><line x1="45" y1="70" x2="65" y2="75" stroke="#1A1A1A" stroke-width="2"/><line x1="135" y1="75" x2="155" y2="70" stroke="#1A1A1A" stroke-width="2"/></svg>
+          <p class="avatar-name">Galaxy Girl</p>
+          <a href="girls/girl-4.svg" download class="download-btn">Download</a>
+        </div>
+        <div class="avatar-card">
+          <svg viewBox="0 0 200 200"><defs><linearGradient id="g5" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#5B21B6"/></linearGradient></defs><ellipse cx="100" cy="100" rx="70" ry="75" fill="url(#g5)"/><ellipse cx="100" cy="105" rx="60" ry="55" fill="#FFE0BD"/><ellipse cx="100" cy="110" rx="40" ry="35" fill="#FFCD94"/><circle cx="80" cy="95" r="8" fill="#1A1A1A"/><circle cx="120" cy="95" r="8" fill="#1A1A1A"/><circle cx="82" cy="93" r="3" fill="#FFFFFF"/><circle cx="122" cy="93" r="3" fill="#FFFFFF"/><ellipse cx="100" cy="135" rx="10" ry="6" fill="#FF6B6B"/><path d="M30 130 Q50 35 100 30 Q150 35 170 130" fill="#4B0082"/><path d="M35 125 Q100 80 165 125" fill="#4B0082"/></svg>
+          <p class="avatar-name">Stellar Girl</p>
+          <a href="girls/girl-5.svg" download class="download-btn">Download</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <h3>🎮 How to Use in SHUATSPHERE App</h3>
+      <p>1. Go to <strong>/avatars</strong> route in the app<br>
+      2. Use the <strong>Customize</strong> tab to create your own avatar<br>
+      3. Use the <strong>Presets</strong> tab to choose from ready-made avatars<br>
+      4. Each avatar has unique gradient background and customizable features<br>
+      5. The parallel universe theme makes them distinct from Reddit's Snoo</p>
+    </div>
+  </div>
+</body>
+</html>

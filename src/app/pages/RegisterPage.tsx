@@ -49,7 +49,7 @@ export function RegisterPage() {
             <SphereLogo size={52} />
           </div>
           <h1 className="font-black text-2xl text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>
-            Join <span className="text-[#7C3AED]">SHUAT</span><span className="text-[#0D9488]">SPHERE</span>
+            Join <span className="text-[#7C3AED]">Schwartz</span><span className="text-[#0D9488]">pear</span>
           </h1>
           <p className="text-sm text-zinc-500 font-semibold mt-1">Only for @shiats.edu.in students ✓</p>
         </div>

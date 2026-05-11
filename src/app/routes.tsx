@@ -15,6 +15,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { ComposeWhisperPage } from './pages/ComposeWhisperPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ShuatsphereAvatarSystem } from './components/ShuatsphereAvatarSystem';
 import { SphereLogo } from './components/SphereLogo';
 
 function NotFound() {
@@ -42,6 +43,10 @@ export const router = createBrowserRouter([
   {
     path: '/forgot-password',
     Component: ForgotPasswordPage,
+  },
+  {
+    path: '/avatars',
+    Component: ShuatsphereAvatarSystem,
   },
   {
     path: '/compose-whisper',
