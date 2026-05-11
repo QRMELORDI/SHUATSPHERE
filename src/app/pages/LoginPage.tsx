@@ -112,6 +112,16 @@ export function LoginPage() {
             </button>
           </div>
 
+          <div className="flex justify-end px-1">
+            <button
+              type="button"
+              onClick={() => navigate('/forgot-password')}
+              className="text-xs font-bold text-zinc-500 hover:text-[#A78BFA] transition-colors"
+            >
+              Forgot Password?
+            </button>
+          </div>
+
           <button
             type="submit"
             disabled={loading}

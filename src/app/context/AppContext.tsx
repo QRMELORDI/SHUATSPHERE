@@ -34,6 +34,7 @@ interface AppContextType {
   toggleTheme: () => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  resetPassword: (email: string, username: string, newPass: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
   refreshSpheres: () => Promise<void>;
   refreshPosts: () => Promise<void>;
@@ -179,8 +180,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!data.email.endsWith('@shiats.edu.in')) {
       return { success: false, error: 'Only @shiats.edu.in emails are allowed.' };
     }
-    if (data.password.length < 8) {
-      return { success: false, error: 'Password must be at least 8 characters.' };
+    if (data.password.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters.' };
     }
     if (!data.name || !data.username || !data.batch || !data.branch) {
       return { success: false, error: 'All fields are required.' };
@@ -198,6 +199,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'Registration successful but login failed' };
     }
     return { success: false, error: 'Registration failed' };
+  };
+
+  const resetPassword = async (email: string, username: string, newPass: string): Promise<{ success: boolean; error?: string }> => {
+    if (!email.endsWith('@shiats.edu.in')) {
+      return { success: false, error: 'Only @shiats.edu.in emails are allowed.' };
+    }
+    if (newPass.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters.' };
+    }
+
+    const result = await api.resetPassword({ email, username, newPassword: newPass });
+    if (result.error) {
+      return { success: false, error: result.error };
+    }
+    return { success: true };
   };
 
   const logout = () => {
@@ -442,6 +458,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refreshUser,
       refreshSpheres,
       refreshPosts,
+      resetPassword,
     }}>
       {children}
     </AppContext.Provider>

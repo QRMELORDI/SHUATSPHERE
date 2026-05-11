@@ -1,4 +1,6 @@
-const API_URL = "https://shuatsphere.onrender.com";
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? "http://localhost:8000"
+  : "https://shuatsphere.onrender.com";
 
 interface ApiResponse<T> {
   data?: T;
@@ -43,6 +45,9 @@ export const api = {
 
   login: (credentials: { email: string; password: string }) =>
     fetchApi("/api/auth/login", { method: "POST", body: JSON.stringify(credentials) }),
+
+  resetPassword: (data: { email: string; username: string; newPassword: string }) =>
+    fetchApi("/api/auth/reset-password", { method: "POST", body: JSON.stringify(data) }),
 
   getMe: () => fetchApi("/api/auth/me"),
 

@@ -85,6 +85,11 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class PasswordReset(BaseModel):
+    email: EmailStr
+    username: str
+    newPassword: str
+
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     bio: Optional[str] = None
@@ -108,6 +113,7 @@ class UserResponse(BaseModel):
     joinedSpheres: List[str] = []
     isVerified: bool = False
     tag: Optional[str] = None
+    role: str = "user"
 
 class SphereCreate(BaseModel):
     name: str
@@ -251,6 +257,19 @@ async def login(user: UserLogin):
     
     token = create_token({"sub": str(db_user["_id"])})
     return {"token": token, "user": serialize_doc(db_user)}
+
+@app.post("/api/auth/reset-password")
+async def reset_password(data: PasswordReset):
+    db_user = await db.users.find_one({"email": data.email, "username": data.username})
+    if not db_user:
+        raise HTTPException(status_code=404, detail="No matching user found with those credentials")
+    
+    hashed_password = pwd_context.hash(data.newPassword)
+    await db.users.update_one(
+        {"_id": db_user["_id"]},
+        {"$set": {"password": hashed_password}}
+    )
+    return {"success": True, "message": "Password reset successfully"}
 
 @app.get("/api/auth/me", response_model=UserResponse)
 async def get_me(token: str = Depends(get_token)):
@@ -820,3 +839,87 @@ async def clear_seed_data(token: str = Depends(get_token)):
     await db.notifications.delete_many({})
     
     return {"success": True, "message": "All demo data cleared"}
+
+@app.post("/api/seed-test-users")
+async def seed_test_users(token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    
+    if user.get("email") != "25msrsgis001@shiats.edu.in":
+        raise HTTPException(status_code=403, detail="Only admin can seed test users")
+    
+    test_users = [
+        {"email": "25msrsgis001@shiats.edu.in", "password": "admin2024", "name": "Admin User", "username": "admin", "batch": "2025", "branch": "CSE", "role": "admin"},
+        {"email": "22msrscse001@shiats.edu.in", "password": "mod2024", "name": "Mod Alice", "username": "mod_alice", "batch": "2022", "branch": "CSE", "role": "moderator"},
+        {"email": "22msrscse002@shiats.edu.in", "password": "mod2024", "name": "Mod Bob", "username": "mod_bob", "batch": "2022", "branch": "CSE", "role": "moderator"},
+        {"email": "22msrscse003@shiats.edu.in", "password": "mod2024", "name": "Mod Charlie", "username": "mod_charlie", "batch": "2022", "branch": "CSE", "role": "moderator"},
+        {"email": "22msrscse004@shiats.edu.in", "password": "mod2024", "name": "Mod Diana", "username": "mod_diana", "batch": "2022", "branch": "CSE", "role": "moderator"},
+        {"email": "22msrscse005@shiats.edu.in", "password": "mod2024", "name": "Mod Evan", "username": "mod_evan", "batch": "2022", "branch": "CSE", "role": "moderator"},
+        {"email": "23msrscse001@shiats.edu.in", "password": "user2024", "name": "User Frank", "username": "user_frank", "batch": "2023", "branch": "CSE", "role": "user"},
+        {"email": "23msrscse002@shiats.edu.in", "password": "user2024", "name": "User Grace", "username": "user_grace", "batch": "2023", "branch": "CSE", "role": "user"},
+        {"email": "23msrscse003@shiats.edu.in", "password": "user2024", "name": "User Henry", "username": "user_henry", "batch": "2023", "branch": "CSE", "role": "user"},
+        {"email": "23msrscse004@shiats.edu.in", "password": "user2024", "name": "User Ivy", "username": "user_ivy", "batch": "2023", "branch": "CSE", "role": "user"},
+    ]
+    
+    created = []
+    for u in test_users:
+        existing = await db.users.find_one({"email": u["email"]})
+        if existing:
+            continue
+        
+        hashed = pwd_context.hash(u["password"])
+        new_user = {
+            "email": u["email"],
+            "password": hashed,
+            "name": u["name"],
+            "username": u["username"],
+            "batch": u["batch"],
+            "branch": u["branch"],
+            "bio": f"{u['branch']} student at SHUATS, batch {u['batch']}",
+            "avatar": f"https://api.dicebear.com/8.x/avataaars/svg?seed={u['username']}&backgroundColor=b6e3f4",
+            "bannerColor": "from-violet-600 to-teal-600",
+            "auraScore": 100 if u["role"] != "user" else 50,
+            "joinDate": datetime.utcnow().strftime("%Y-%m-%d"),
+            "badges": ["verified_student"] + (["moderator"] if u["role"] == "moderator" else []),
+            "joinedSpheres": [],
+            "isVerified": True,
+            "tag": f"{u['branch']} {u['batch']}",
+            "role": u["role"],
+        }
+        await db.users.insert_one(new_user)
+        created.append({"email": u["email"], "password": u["password"], "role": u["role"]})
+    
+    return {"success": True, "created": created}
+
+@app.get("/api/test-users")
+async def get_test_users(token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    
+    if user.get("email") != "25msrsgis001@shiats.edu.in":
+        raise HTTPException(status_code=403, detail="Only admin can view test users")
+    
+    test_emails = [
+        "25msrsgis001@shiats.edu.in",
+        "22msrscse001@shiats.edu.in",
+        "22msrscse002@shiats.edu.in",
+        "22msrscse003@shiats.edu.in",
+        "22msrscse004@shiats.edu.in",
+        "22msrscse005@shiats.edu.in",
+        "23msrscse001@shiats.edu.in",
+        "23msrscse002@shiats.edu.in",
+        "23msrscse003@shiats.edu.in",
+        "23msrscse004@shiats.edu.in",
+    ]
+    
+    test_users = []
+    for email in test_emails:
+        db_user = await db.users.find_one({"email": email})
+        if db_user:
+            test_users.append({
+                "email": email,
+                "name": db_user.get("name"),
+                "username": db_user.get("username"),
+                "role": db_user.get("role", "user"),
+                "auraScore": db_user.get("auraScore", 0),
+            })
+    
+    return {"users": test_users}

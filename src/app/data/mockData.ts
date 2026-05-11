@@ -16,6 +16,7 @@ export interface User {
   joinedSpheres: string[];
   isVerified: boolean;
   tag?: string;
+  role?: string;
 }
 
 export interface Sphere {

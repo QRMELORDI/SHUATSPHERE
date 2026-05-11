@@ -14,6 +14,7 @@ import { StashPage } from './pages/StashPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { ComposeWhisperPage } from './pages/ComposeWhisperPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { SphereLogo } from './components/SphereLogo';
 
 function NotFound() {
@@ -37,6 +38,10 @@ export const router = createBrowserRouter([
   {
     path: '/register',
     Component: RegisterPage,
+  },
+  {
+    path: '/forgot-password',
+    Component: ForgotPasswordPage,
   },
   {
     path: '/compose-whisper',
