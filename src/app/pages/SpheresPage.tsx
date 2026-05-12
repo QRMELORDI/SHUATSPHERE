@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, Users, FileText, Plus, ChevronRight, X, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Sphere } from '../data/mockData';
+import { AnimatedGlobe } from '../components/AnimatedGlobe';
 
 const CATEGORIES = ['All', 'Academics', 'Sports', 'Campus Life', 'Events', 'Career', 'Official'];
 
@@ -114,10 +115,15 @@ export function SpheresPage() {
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
-      <div>
-        <h1 className="font-black text-2xl text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>Spheres 🌐</h1>
-        <p className="text-sm text-zinc-500 font-semibold mt-0.5">SHUATS communities</p>
+      {/* Header with animated globe */}
+      <div className="flex items-center gap-4">
+        <AnimatedGlobe size={64} className="shrink-0" />
+        <div>
+          <h1 className="font-black text-2xl text-foreground flex items-center gap-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            Spheres 🌐
+          </h1>
+          <p className="text-sm text-zinc-500 font-semibold mt-0.5">SHUATS communities</p>
+        </div>
       </div>
 
       {/* Search */}

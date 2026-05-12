@@ -929,3 +929,36 @@ async def get_test_users(token: str = Depends(get_token)):
             })
     
     return {"users": test_users}
+
+@app.get("/api/admin/users")
+async def get_all_users(token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    if user.get("role") not in ["admin", "moderator"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    users = await db.users.find({}, {"password": 0}).to_list(100)
+    return {"users": [serialize_doc(u) for u in users]}
+
+@app.post("/api/admin/aura")
+async def give_aura_points(data: dict, token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    if user.get("role") not in ["admin", "moderator"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    target_user_id = data.get("userId")
+    aura_amount = data.get("aura", 0)
+    
+    if not target_user_id or aura_amount == 0:
+        raise HTTPException(status_code=400, detail="Invalid request")
+    
+    target = await db.users.find_one({"_id": ObjectId(target_user_id)})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    new_score = target.get("auraScore", 0) + aura_amount
+    await db.users.update_one(
+        {"_id": ObjectId(target_user_id)},
+        {"$set": {"auraScore": new_score}}
+    )
+    
+    return {"success": True, "message": f"Added {aura_amount} aura to {target['name']}", "newScore": new_score}

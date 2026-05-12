@@ -11,7 +11,7 @@ const POST_TYPES = [
 
 export function CreatePostPage() {
   const navigate = useNavigate();
-  const { isLoggedIn, currentUser, addPost, joinedSpheres, spheres } = useApp();
+  const { isLoggedIn, currentUser, addPost, joinedSpheres, toggleJoinSphere, spheres } = useApp();
   const [type, setType] = useState<'text' | 'image' | 'link'>('text');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -62,10 +62,23 @@ export function CreatePostPage() {
     if (!title.trim() || !sphereSlug) return;
     if (type === 'image' && !imageData) return;
     setSubmitting(true);
+
+    // Auto-join sphere if not already joined
+    if (sphereSlug && !joinedSpheres.has(sphereSlug)) {
+      await toggleJoinSphere(sphereSlug);
+    }
+
     await new Promise(r => setTimeout(r, 600));
 
     const sphere = spheres.find(s => s.slug === sphereSlug);
     if (!sphere || !currentUser) { setSubmitting(false); return; }
+
+    // Re-fetch sphere to get updated ID after joining
+    const updatedSphere = spheres.find(s => s.slug === sphereSlug);
+    if (!updatedSphere) {
+      setSubmitting(false);
+      return;
+    }
 
     addPost({
       title: title.trim(),
@@ -74,8 +87,8 @@ export function CreatePostPage() {
       linkUrl: type === 'link' ? linkUrl : undefined,
       type,
       authorId: currentUser.id,
-      sphereId: sphere.id,
-      sphereSlug: sphere.slug,
+      sphereId: updatedSphere.id,
+      sphereSlug: sphereSlug,
       flair: flair || undefined,
     });
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { TrendingUp, Clock, Trophy, Ghost, ChevronRight, Sparkles, Users } from 'lucide-react';
@@ -11,11 +11,38 @@ const SORT_OPTIONS = [
   { id: 'top', label: 'Top', icon: Trophy },
 ];
 
+const WELCOME_POST_ID = 'shuatsphere-welcome-post';
+
+function shouldShowWelcome(user: { joinDate?: string } | null): boolean {
+  if (!user) return false;
+  const joinDate = user.joinDate ? new Date(user.joinDate) : null;
+  if (!joinDate) return true;
+  const daysSinceJoin = (Date.now() - joinDate.getTime()) / (1000 * 60 * 60 * 24);
+  const shown = localStorage.getItem(WELCOME_POST_ID);
+  return daysSinceJoin <= 7 && !shown;
+}
+
+function markWelcomeShown() {
+  localStorage.setItem(WELCOME_POST_ID, 'true');
+}
+
 export function HomePage() {
   const navigate = useNavigate();
   const { posts, isLoggedIn, joinedSpheres, currentUser, spheres } = useApp();
   const [sort, setSort] = useState('trending');
   const [feedFilter, setFeedFilter] = useState<'all' | 'joined'>('all');
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    if (isLoggedIn && currentUser && shouldShowWelcome(currentUser)) {
+      setShowWelcome(true);
+    }
+  }, [isLoggedIn, currentUser]);
+
+  const handleDismissWelcome = () => {
+    setShowWelcome(false);
+    markWelcomeShown();
+  };
 
   const sortedPosts = useMemo(() => {
     let filtered = [...posts];
@@ -34,6 +61,11 @@ export function HomePage() {
   }, [posts, sort, feedFilter, joinedSpheres]);
 
   const topSpheres = spheres.slice(0, 4);
+
+  // Real popular searches from spheres
+  const popularSearches = spheres
+    .slice(0, 8)
+    .map(s => `s/${s.slug}`);
 
   return (
     <div className="space-y-0">
@@ -74,6 +106,43 @@ export function HomePage() {
         </div>
       )}
 
+      {/* Welcome Post - shows once after account creation */}
+      {showWelcome && isLoggedIn && currentUser && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mt-4 p-4 rounded-2xl border-2 border-amber-400 dark:border-amber-600 bg-gradient-to-r from-amber-50 to-violet-50 dark:from-amber-950/30 dark:to-violet-950/30 shadow-[3px_3px_0px_#18181B]"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-violet-500 flex items-center justify-center text-2xl shrink-0">
+              🎉
+            </div>
+            <div className="flex-1">
+              <h3 className="font-black text-foreground text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                Welcome to SHUATSPHERE, {currentUser.name.split(' ')[0]}!
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 font-semibold mt-1">
+                You're now part of the SHUATS community! Explore spheres, connect with peers, and share your journey. 🚀
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => navigate('/spheres')}
+                  className="px-3 py-1.5 bg-[#7C3AED] text-white text-xs font-black rounded-xl border-2 border-zinc-900 shadow-[2px_2px_0px_#18181B] dark:shadow-none active:translate-y-0.5 active:shadow-none"
+                >
+                  Explore Spheres
+                </button>
+                <button
+                  onClick={handleDismissWelcome}
+                  className="px-3 py-1.5 text-zinc-500 text-xs font-black"
+                >
+                  Got it!
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Featured Spheres strip */}
       <div className="mt-4 px-4">
         <div className="flex items-center justify-between mb-2">
@@ -98,6 +167,29 @@ export function HomePage() {
           ))}
         </div>
       </div>
+
+      {/* Popular Searches */}
+      {popularSearches.length > 0 && (
+        <div className="px-4 mt-3">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-black text-sm text-foreground uppercase tracking-wider" style={{ fontFamily: 'Outfit, sans-serif' }}>Popular Searches</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {popularSearches.map((s, i) => (
+              <motion.button
+                key={s}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.05 }}
+                onClick={() => navigate(`/search?q=${encodeURIComponent(s)}`)}
+                className="px-3 py-1.5 rounded-full border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-[#15122A] text-xs font-black uppercase tracking-wider hover:bg-[#7C3AED]/10 hover:border-[#7C3AED] hover:text-[#7C3AED] transition-all shadow-[1px_1px_0px_#18181B] dark:shadow-none"
+              >
+                {s}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Sort + Filter tabs */}
       <div className="sticky top-14 z-30 bg-[#FAFAFF]/95 dark:bg-[#0D0B1A]/95 backdrop-blur-xl border-b-2 border-zinc-900 dark:border-zinc-700 mt-3">

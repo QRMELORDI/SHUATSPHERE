@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Shield, ArrowLeft, Users, FileText, Star, Edit3, X, Check, Camera, Palette, Sparkles } from 'lucide-react';
+import { Calendar, Shield, ArrowLeft, Users, FileText, Star, Edit3, X, Check, Camera, Palette, Sparkles, Loader2 } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
 import { SphereLogo } from '../components/SphereLogo';
 import { useApp } from '../context/AppContext';
@@ -83,6 +83,8 @@ export function ProfilePage() {
   const [bannerTab, setBannerTab] = useState<'static' | 'animated'>('static');
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // *** FIX: use reactive currentUser when viewing own profile ***
   const targetUser = id
@@ -130,18 +132,44 @@ export function ProfilePage() {
     setEditOpen(true);
   };
 
-  const saveEdit = async () => {
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 400));
-    updateProfile({
-      name: editName.trim() || targetUser.name,
-      bio: editBio.trim(),
-      avatar: makeAvatarUrl(editAvatarStyle, editAvatarSeed, editAvatarBg),
-      bannerColor: editBanner,
-    });
-    setSaving(false);
-    setEditOpen(false);
+  const [autoSaved, setAutoSaved] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced auto-save on any field change
+  const scheduleAutoSave = () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (!isLoggedIn || !currentUser) return;
+      setSaving(true);
+      await updateProfile({
+        name: editName.trim() || targetUser.name,
+        bio: editBio.trim(),
+        avatar: makeAvatarUrl(editAvatarStyle, editAvatarSeed, editAvatarBg),
+        bannerColor: editBanner,
+      });
+      setSaving(false);
+      setAutoSaved(true);
+      setTimeout(() => setAutoSaved(false), 2000);
+    }, 1000); // Debounce 1 second
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleNameChange = (v: string) => { setEditName(v); scheduleAutoSave(); };
+  const handleBioChange = (v: string) => { setEditBio(v); scheduleAutoSave(); };
+  const handleBannerChange = (v: string) => { setEditBanner(v); scheduleAutoSave(); };
+  const handleAvatarStyleChange = (v: string) => { setEditAvatarStyle(v); scheduleAutoSave(); };
+  const handleAvatarSeedChange = (v: string) => { setEditAvatarSeed(v); scheduleAutoSave(); };
+  const handleAvatarBgChange = (v: string) => { setEditAvatarBg(v); scheduleAutoSave(); };
 
   return (
     <div>
@@ -193,12 +221,22 @@ export function ProfilePage() {
                 )}
               </div>
               {isOwnProfile ? (
-                <button
-                  onClick={logout}
-                  className="px-3 py-1.5 rounded-xl text-xs font-black text-red-500 border-2 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
-                >
-                  Logout
-                </button>
+                <div className="flex gap-2">
+                  {(currentUser?.role === 'admin' || currentUser?.role === 'moderator') && (
+                    <button
+                      onClick={() => navigate('/admin-aura')}
+                      className="px-3 py-1.5 rounded-xl text-xs font-black text-amber-600 border-2 border-amber-200 dark:border-amber-900/50 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all flex items-center gap-1"
+                    >
+                      <Sparkles size={12} /> Admin
+                    </button>
+                  )}
+                  <button
+                    onClick={logout}
+                    className="px-3 py-1.5 rounded-xl text-xs font-black text-red-500 border-2 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
+                  >
+                    Logout
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => navigate(`/compose-whisper?to=${targetUser.username}`)}
@@ -344,7 +382,7 @@ export function ProfilePage() {
                     {AVATAR_STYLES.map(style => (
                       <button
                         key={style.id}
-                        onClick={() => setEditAvatarStyle(style.id)}
+                        onClick={() => handleAvatarStyleChange(style.id)}
                         className={`p-2 rounded-xl border-2 flex flex-col items-center gap-1.5 transition-all ${
                           editAvatarStyle === style.id
                             ? 'border-[#7C3AED] bg-violet-50 dark:bg-violet-950/30 shadow-[2px_2px_0px_#7C3AED]'
@@ -369,7 +407,7 @@ export function ProfilePage() {
                     {AVATAR_SEEDS.map(seed => (
                       <button
                         key={seed}
-                        onClick={() => setEditAvatarSeed(seed)}
+                        onClick={() => handleAvatarSeedChange(seed)}
                         className={`w-10 h-10 rounded-xl border-2 overflow-hidden transition-all ${
                           editAvatarSeed === seed ? 'border-[#7C3AED] shadow-[2px_2px_0px_#7C3AED]' : 'border-zinc-300 dark:border-zinc-600'
                         }`}
@@ -391,7 +429,7 @@ export function ProfilePage() {
                     {AVATAR_BG.map(bg => (
                       <button
                         key={bg}
-                        onClick={() => setEditAvatarBg(bg)}
+                        onClick={() => handleAvatarBgChange(bg)}
                         className={`w-9 h-9 rounded-xl border-2 transition-all ${
                           editAvatarBg === bg ? 'border-zinc-900 dark:border-white scale-110 shadow-md' : 'border-transparent hover:scale-105'
                         }`}
@@ -429,7 +467,7 @@ export function ProfilePage() {
                       {STATIC_BANNER_PRESETS.map(preset => (
                         <button
                           key={preset.value}
-                          onClick={() => setEditBanner(preset.value)}
+                          onClick={() => handleBannerChange(preset.value)}
                           className={`h-12 rounded-xl bg-gradient-to-r ${preset.value} border-2 transition-all flex items-center justify-center ${
                             editBanner === preset.value
                               ? 'border-zinc-900 shadow-[2px_2px_0px_#7C3AED]'
@@ -447,7 +485,7 @@ export function ProfilePage() {
                       {ANIMATED_BANNER_PRESETS.map(preset => (
                         <button
                           key={preset.value}
-                          onClick={() => setEditBanner(preset.value)}
+                          onClick={() => handleBannerChange(preset.value)}
                           className={`h-12 rounded-xl ${preset.className} border-2 transition-all flex items-center justify-center gap-2 ${
                             editBanner === preset.value
                               ? 'border-zinc-900 shadow-[2px_2px_0px_#7C3AED]'
@@ -468,7 +506,7 @@ export function ProfilePage() {
                   <input
                     type="text"
                     value={editName}
-                    onChange={e => { setEditName(e.target.value); setHasChanges(true); }}
+                    onChange={e => handleNameChange(e.target.value)}
                     maxLength={50}
                     className="w-full bg-white dark:bg-[#1E1A35] border-2 border-zinc-900 dark:border-zinc-700 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:border-[#7C3AED] transition-all shadow-[2px_2px_0px_#18181B] dark:shadow-none"
                   />
@@ -479,7 +517,7 @@ export function ProfilePage() {
                   <label className="text-xs font-black uppercase tracking-wider text-zinc-500 mb-2 block">Bio</label>
                   <textarea
                     value={editBio}
-                    onChange={e => { setEditBio(e.target.value); setHasChanges(true); }}
+                    onChange={e => handleBioChange(e.target.value)}
                     maxLength={160}
                     rows={3}
                     placeholder="Tell others about yourself..."
@@ -487,24 +525,34 @@ export function ProfilePage() {
                   />
                   <div className="text-right text-[10px] text-zinc-400 mt-1 font-semibold">{editBio.length}/160</div>
                 </div>
+                
+                {/* Saving indicator */}
+                {saving && (
+                  <div className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-violet-600">
+                    <Loader2 size={14} className="animate-spin" /> Saving...
+                  </div>
+                )}
+                {autoSaved && !saving && (
+                  <div className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-emerald-600">
+                    <Check size={14} /> Saved!
+                  </div>
+                )}
               </div>
 
-              {/* Save button */}
-              {hasChanges && (
-                <div className="p-4 border-t border-zinc-200 dark:border-zinc-700">
-                  <button
-                    onClick={saveEdit}
-                    disabled={saving}
-                    className="w-full py-3 rounded-2xl bg-[#7C3AED] text-white font-black border-2 border-zinc-900 shadow-[3px_3px_0px_#18181B] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    {saving ? (
-                      <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <><Check size={16} /> Save Changes</>
-                    )}
-                  </button>
-                </div>
-              )}
+              {/* Save button - auto-saves on any change, just for close */}
+              <div className="p-4 border-t border-zinc-200 dark:border-zinc-700">
+                <button
+                  onClick={() => { setEditOpen(false); }}
+                  disabled={saving}
+                  className="w-full py-3 rounded-2xl bg-[#7C3AED] text-white font-black border-2 border-zinc-900 shadow-[3px_3px_0px_#18181B] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {saving ? (
+                    <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <><Check size={16} /> Done</>
+                  )}
+                </button>
+              </div>
             </motion.div>
           </>
         )}

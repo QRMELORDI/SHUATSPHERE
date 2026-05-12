@@ -38,6 +38,9 @@ interface AppContextType {
   refreshUser: () => Promise<void>;
   refreshSpheres: () => Promise<void>;
   refreshPosts: () => Promise<void>;
+  allUsers: User[];
+  loadAllUsers: () => Promise<void>;
+  giveAuraPoints: (userId: string, aura: number) => Promise<{ success: boolean; error?: string }>;
 }
 
 interface RegisterData {
@@ -65,6 +68,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isDark, setIsDark] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
+  const loadAllUsers = async () => {
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'moderator') return;
+    const result = await api.getAllUsers();
+    if (result.data) {
+      setAllUsers(result.data.users || []);
+    }
+  };
+
+  const giveAuraPoints = async (userId: string, aura: number): Promise<{ success: boolean; error?: string }> => {
+    const result = await api.giveAuraPoints(userId, aura);
+    if (result.error) {
+      return { success: false, error: result.error };
+    }
+    if (result.data?.success) {
+      await loadAllUsers();
+      return { success: true };
+    }
+    return { success: false, error: 'Failed to give aura points' };
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -326,23 +350,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addPost = async (postData: Omit<Post, 'id' | 'boosts' | 'buries' | 'replyCount' | 'stashCount' | 'createdAt'>) => {
     if (!isLoggedIn) return;
     
-    const result = await api.createPost({
-      title: postData.title,
-      content: postData.content,
-      imageUrl: postData.imageUrl,
-      linkUrl: postData.linkUrl,
-      type: postData.type,
-      sphereSlug: postData.sphereSlug,
-      flair: postData.flair,
-    });
+    // Optimistically add to UI
+    const tempId = 'temp_' + Date.now();
+    const tempPost: Post = {
+      ...postData,
+      id: tempId,
+      boosts: 0,
+      buries: 0,
+      replyCount: 0,
+      stashCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+    setPosts(prev => [tempPost, ...prev]);
     
-    if (result.data) {
-      setPosts(prev => [result.data as Post, ...prev]);
-      setSpheres(prev => prev.map(s => 
-        s.slug === postData.sphereSlug 
-          ? { ...s, postCount: s.postCount + 1 }
-          : s
-      ));
+    try {
+      const result = await api.createPost({
+        title: postData.title,
+        content: postData.content,
+        imageUrl: postData.imageUrl,
+        linkUrl: postData.linkUrl,
+        type: postData.type,
+        sphereSlug: postData.sphereSlug,
+        flair: postData.flair,
+      });
+      
+      if (result.error) {
+        setPosts(prev => prev.filter(p => p.id !== tempId));
+        return;
+      }
+      
+      if (result.data) {
+        setPosts(prev => {
+          const exists = prev.find(p => p.id === tempId);
+          if (exists) {
+            return prev.map(p => p.id === tempId ? result.data as Post : p);
+          }
+          return [result.data as Post, ...prev];
+        });
+        setSpheres(prev => prev.map(s => 
+          s.slug === postData.sphereSlug 
+            ? { ...s, postCount: s.postCount + 1 }
+            : s
+        ));
+      }
+    } catch {
+      setPosts(prev => prev.filter(p => p.id !== tempId));
     }
   };
 
@@ -459,6 +511,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refreshSpheres,
       refreshPosts,
       resetPassword,
+      allUsers,
+      loadAllUsers,
+      giveAuraPoints,
     }}>
       {children}
     </AppContext.Provider>

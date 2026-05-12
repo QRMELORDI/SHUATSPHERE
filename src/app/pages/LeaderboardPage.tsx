@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { Trophy, Sparkles, Crown, Medal, Users, FileText, ArrowLeft } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { USERS } from '../data/mockData';
+import { api } from '../../lib/api';
+import { User } from '../data/mockData';
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <Crown size={20} className="text-amber-400" />;
@@ -18,12 +19,32 @@ export function LeaderboardPage() {
   const navigate = useNavigate();
   const { spheres } = useApp();
   const [tab, setTab] = useState<'aura' | 'spheres'>('aura');
+  const [leaderboardUsers, setLeaderboardUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const sortedUsers = [...USERS].sort((a, b) => b.auraScore - a.auraScore);
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const result = await api.getLeaderboard();
+        if (result.data) {
+          setLeaderboardUsers(result.data as User[]);
+        }
+      } catch {
+        // Keep empty on error
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLeaderboard();
+  }, []);
+
+  const sortedUsers = [...leaderboardUsers].sort((a, b) => b.auraScore - a.auraScore);
   const topSpheres = [...spheres].sort((a, b) => b.memberCount - a.memberCount);
 
   // Podium order: 2nd, 1st, 3rd
-  const podiumOrder = [sortedUsers[1], sortedUsers[0], sortedUsers[2]];
+  const podiumOrder = sortedUsers[1] && sortedUsers[0] && sortedUsers[2] 
+    ? [sortedUsers[1], sortedUsers[0], sortedUsers[2]] 
+    : [];
   const podiumRanks = [2, 1, 3];
   const podiumHeights = ['h-28', 'h-36', 'h-24'];
   const podiumColors = [
@@ -77,94 +98,109 @@ export function LeaderboardPage() {
       {/* Aura tab */}
       {tab === 'aura' && (
         <div className="space-y-3">
-          {/* Podium */}
-          {sortedUsers.length >= 3 && (
-            <div className="rounded-2xl border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-[#15122A] shadow-[4px_4px_0px_#18181B] dark:shadow-none p-4 mb-2">
-              <p className="text-center text-xs font-black uppercase tracking-widest text-zinc-400 mb-3">
-                Top 3 Sphere Champions
-              </p>
-              <div className="flex items-end justify-center gap-2">
-                {podiumOrder.map((user, i) => (
-                  <button
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm text-zinc-500 font-semibold">Loading leaderboard...</p>
+            </div>
+          ) : sortedUsers.length === 0 ? (
+            <div className="text-center py-12">
+              <span className="text-4xl block mb-3">🏆</span>
+              <p className="font-black text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>No users yet</p>
+              <p className="text-zinc-500 text-sm font-semibold mt-1">Be the first to earn Aura!</p>
+            </div>
+          ) : (
+            <>
+              {/* Podium */}
+              {sortedUsers.length >= 3 && (
+                <div className="rounded-2xl border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-[#15122A] shadow-[4px_4px_0px_#18181B] dark:shadow-none p-4 mb-2">
+                  <p className="text-center text-xs font-black uppercase tracking-widest text-zinc-400 mb-3">
+                    Top 3 Sphere Champions
+                  </p>
+                  <div className="flex items-end justify-center gap-2">
+                    {podiumOrder.map((user, i) => (
+                      <button
+                        key={user.id}
+                        onClick={() => navigate(`/profile/${user.id}`)}
+                        className={`flex flex-col items-center justify-end ${podiumHeights[i]} flex-1 p-2 rounded-2xl border-2 border-zinc-900 dark:border-zinc-700 ${podiumColors[i]} hover:border-[#7C3AED] transition-all active:scale-95`}
+                      >
+                        <img
+                          src={user.avatar}
+                          alt={user.name}
+                          className="w-12 h-12 rounded-xl border-2 border-zinc-900 dark:border-zinc-700 mb-1.5"
+                        />
+                        <div className="text-[10px] font-black text-foreground truncate w-full text-center">
+                          {user.name.split(' ')[0]}
+                        </div>
+                        <div className="text-[10px] text-[#7C3AED] font-black flex items-center gap-0.5">
+                          <Sparkles size={9} />
+                          {user.auraScore}
+                        </div>
+                        <div className="mt-1.5">
+                          <RankBadge rank={podiumRanks[i]} />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Full list */}
+              <div className="space-y-2">
+                {sortedUsers.map((user, i) => (
+                  <motion.button
                     key={user.id}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
                     onClick={() => navigate(`/profile/${user.id}`)}
-                    className={`flex flex-col items-center justify-end ${podiumHeights[i]} flex-1 p-2 rounded-2xl border-2 border-zinc-900 dark:border-zinc-700 ${podiumColors[i]} hover:border-[#7C3AED] transition-all active:scale-95`}
+                    className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 bg-white dark:bg-[#15122A] shadow-[3px_3px_0px_#18181B] dark:shadow-none hover:border-[#7C3AED] active:translate-y-0.5 active:shadow-none transition-all ${
+                      i < 3
+                        ? 'border-[#7C3AED]/40 dark:border-[#7C3AED]/30'
+                        : 'border-zinc-900 dark:border-zinc-700'
+                    }`}
                   >
+                    <div className="w-8 flex items-center justify-center shrink-0">
+                      <RankBadge rank={i + 1} />
+                    </div>
                     <img
                       src={user.avatar}
                       alt={user.name}
-                      className="w-12 h-12 rounded-xl border-2 border-zinc-900 dark:border-zinc-700 mb-1.5"
+                      className="w-10 h-10 rounded-xl border-2 border-zinc-900 dark:border-zinc-700 shrink-0"
                     />
-                    <div className="text-[10px] font-black text-foreground truncate w-full text-center">
-                      {user.name.split(' ')[0]}
+                    <div className="flex-1 text-left min-w-0">
+                      <div
+                        className="font-black text-foreground text-sm truncate"
+                        style={{ fontFamily: 'Outfit, sans-serif' }}
+                      >
+                        {user.name}
+                      </div>
+                      <div className="text-xs text-zinc-500 font-semibold">
+                        @{user.username} · {user.tag || user.branch}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-[#7C3AED] font-black flex items-center gap-0.5">
-                      <Sparkles size={9} />
-                      {user.auraScore}
+                    <div className="text-right shrink-0">
+                      <div className="font-black text-[#7C3AED] text-sm flex items-center gap-1 justify-end">
+                        <Sparkles size={12} />
+                        {user.auraScore}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-semibold">Aura</div>
                     </div>
-                    <div className="mt-1.5">
-                      <RankBadge rank={podiumRanks[i]} />
-                    </div>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-            </div>
+
+              {/* Tip */}
+              <div className="rounded-2xl border-2 border-dashed border-violet-200 dark:border-violet-800/40 bg-violet-50 dark:bg-violet-950/20 p-4 text-center">
+                <p className="text-xs font-black text-[#7C3AED]" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                  ✨ How to earn Aura?
+                </p>
+                <p className="text-xs text-zinc-500 font-semibold mt-1">
+                  Post content · Get boosted · Reply to discussions · Join spheres
+                </p>
+              </div>
+            </>
           )}
-
-          {/* Full list */}
-          <div className="space-y-2">
-            {sortedUsers.map((user, i) => (
-              <motion.button
-                key={user.id}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.04 }}
-                onClick={() => navigate(`/profile/${user.id}`)}
-                className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 bg-white dark:bg-[#15122A] shadow-[3px_3px_0px_#18181B] dark:shadow-none hover:border-[#7C3AED] active:translate-y-0.5 active:shadow-none transition-all ${
-                  i < 3
-                    ? 'border-[#7C3AED]/40 dark:border-[#7C3AED]/30'
-                    : 'border-zinc-900 dark:border-zinc-700'
-                }`}
-              >
-                <div className="w-8 flex items-center justify-center shrink-0">
-                  <RankBadge rank={i + 1} />
-                </div>
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-10 h-10 rounded-xl border-2 border-zinc-900 dark:border-zinc-700 shrink-0"
-                />
-                <div className="flex-1 text-left min-w-0">
-                  <div
-                    className="font-black text-foreground text-sm truncate"
-                    style={{ fontFamily: 'Outfit, sans-serif' }}
-                  >
-                    {user.name}
-                  </div>
-                  <div className="text-xs text-zinc-500 font-semibold">
-                    @{user.username} · {user.tag}
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="font-black text-[#7C3AED] text-sm flex items-center gap-1 justify-end">
-                    <Sparkles size={12} />
-                    {user.auraScore}
-                  </div>
-                  <div className="text-[10px] text-zinc-400 font-semibold">Aura</div>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-
-          {/* Tip */}
-          <div className="rounded-2xl border-2 border-dashed border-violet-200 dark:border-violet-800/40 bg-violet-50 dark:bg-violet-950/20 p-4 text-center">
-            <p className="text-xs font-black text-[#7C3AED]" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              ✨ How to earn Aura?
-            </p>
-            <p className="text-xs text-zinc-500 font-semibold mt-1">
-              Post content · Get boosted · Reply to discussions · Join spheres
-            </p>
-          </div>
         </div>
       )}
 

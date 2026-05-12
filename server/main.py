@@ -222,7 +222,7 @@ async def register(user: UserCreate):
         "bio": f"{user.branch} student at SHUATS, batch {user.batch}",
         "avatar": f"https://api.dicebear.com/8.x/avataaars/svg?seed={user.username}&backgroundColor=b6e3f4",
         "bannerColor": "from-violet-600 to-teal-600",
-        "auraScore": 0,
+        "auraScore": 100,
         "joinDate": datetime.utcnow().strftime("%Y-%m-%d"),
         "badges": ["verified_student"],
         "joinedSpheres": ["notices"],
@@ -231,6 +231,33 @@ async def register(user: UserCreate):
     }
     result = await db.users.insert_one(new_user)
     new_user["_id"] = result.inserted_id
+    
+    # Create welcome post only on first account creation
+    welcome_sphere = await db.spheres.find_one({"slug": "notices"})
+    if welcome_sphere:
+        welcome_post = {
+            "title": f"👋 Welcome {user.name} to SHUATSPHERE!",
+            "content": f"Hey everyone! I'm {user.name}, a {user.branch} student (batch {user.batch}). Excited to be here! 🎓\n\nFeel free to reach out to me. Looking forward to connecting with all of you!",
+            "imageUrl": None,
+            "linkUrl": None,
+            "type": "text",
+            "authorId": str(result.inserted_id),
+            "sphereId": str(welcome_sphere["_id"]),
+            "sphereSlug": "notices",
+            "boosts": 0,
+            "buries": 0,
+            "replyCount": 0,
+            "stashCount": 0,
+            "createdAt": datetime.utcnow().isoformat(),
+            "flair": "Introduction",
+            "isPinned": False,
+            "isEvent": False,
+            "eventDate": None,
+            "eventVenue": None,
+        }
+        await db.posts.insert_one(welcome_post)
+        await db.spheres.update_one({"_id": welcome_sphere["_id"]}, {"$inc": {"postCount": 1}})
+    
     return serialize_doc(new_user)
 
 @app.post("/api/auth/login")
@@ -640,3 +667,82 @@ async def get_version():
         "forceUpdate": False,
         "releaseNotes": "✨ Gen Z animations added\n🎮 New avatar system\n🚀 Performance improvements"
     }
+
+@app.post("/api/admin/give-aura")
+async def give_aura_points(user_id: str, points: int, token: str = Depends(get_token)):
+    admin = await get_current_user(token)
+    if admin.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can give aura points")
+    
+    if points < 0:
+        raise HTTPException(status_code=400, detail="Points must be positive")
+    
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$inc": {"auraScore": points}}
+    )
+    
+    updated_user = await db.users.find_one({"_id": ObjectId(user_id)})
+    return serialize_doc(updated_user)
+
+@app.get("/api/leaderboard")
+async def get_leaderboard(limit: int = 50):
+    users = await db.users.find().sort("auraScore", -1).limit(limit).to_list(limit)
+    return [serialize_doc(u) for u in users]
+
+@app.post("/api/posts/{post_id}/crosspost")
+async def crosspost(post_id: str, target_sphere_slug: str, token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    original = await db.posts.find_one({"_id": ObjectId(post_id)})
+    if not original:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    target_sphere = await db.spheres.find_one({"slug": target_sphere_slug})
+    if not target_sphere:
+        raise HTTPException(status_code=404, detail="Target sphere not found")
+    
+    crosspost = {
+        "title": f"[Cross-post] {original.get('title', '')}",
+        "content": original.get("content"),
+        "imageUrl": original.get("imageUrl"),
+        "linkUrl": original.get("linkUrl"),
+        "type": original.get("type", "text"),
+        "authorId": user["id"],
+        "sphereId": str(target_sphere["_id"]),
+        "sphereSlug": target_sphere_slug,
+        "boosts": 0,
+        "buries": 0,
+        "replyCount": 0,
+        "stashCount": 0,
+        "createdAt": datetime.utcnow().isoformat(),
+        "flair": f"Crossposted from s/{original.get('sphereSlug', '')}",
+        "isPinned": False,
+        "isEvent": False,
+        "eventDate": None,
+        "eventVenue": None,
+        "originalPostId": post_id,
+    }
+    result = await db.posts.insert_one(crosspost)
+    crosspost["_id"] = result.inserted_id
+    
+    await db.spheres.update_one(
+        {"_id": target_sphere["_id"]},
+        {"$inc": {"postCount": 1}}
+    )
+    
+    return serialize_doc(crosspost)
+
+@app.post("/api/whispers/{whisper_id}/read")
+async def mark_whisper_read(whisper_id: str, token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    await db.whispers.update_one(
+        {"_id": ObjectId(whisper_id), "toId": user["id"]},
+        {"$set": {"read": True}}
+    )
+    return {"success": True}
+
+@app.get("/api/whispers/unread-count")
+async def get_unread_whisper_count(token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    count = await db.whispers.count_documents({"toId": user["id"], "read": False})
+    return {"count": count}

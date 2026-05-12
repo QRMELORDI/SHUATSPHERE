@@ -15,6 +15,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { ComposeWhisperPage } from './pages/ComposeWhisperPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { AdminAuraPage } from './pages/AdminAuraPage';
 import { ShuatsphereAvatarSystem } from './components/ShuatsphereAvatarSystem';
 import { SphereLogo } from './components/SphereLogo';
 
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: 'stash', Component: StashPage },
       { path: 'notifications', Component: NotificationsPage },
       { path: 'leaderboard', Component: LeaderboardPage },
+      { path: 'admin-aura', Component: AdminAuraPage },
       { path: '*', Component: NotFound },
     ],
   },

@@ -157,7 +157,11 @@ export const api = {
     type: string;
     sphereSlug: string;
     flair?: string;
-  }) => fetchApi("/api/posts", { method: "POST", body: JSON.stringify(post) }),
+  }) => {
+    const token = localStorage.getItem("shuatsphere_token");
+    if (!token) return Promise.resolve({ error: 'No auth token' });
+    return fetchApi("/api/posts", { method: "POST", body: JSON.stringify(post) });
+  },
 
   deletePost: (postId: string) =>
     fetchApi(`/api/posts/${postId}`, { method: "DELETE" }),
@@ -187,6 +191,17 @@ export const api = {
     fetchApi(`/api/whispers/${whisperId}/read`, { method: "POST" }),
 
   getUnreadWhisperCount: () => fetchApi("/api/whispers/unread-count"),
+
+  // Admin
+  giveAuraPoints: (userId: string, points: number) =>
+    fetchApi(`/api/admin/give-aura?user_id=${userId}&points=${points}`, { method: "POST" }),
+
+  // Leaderboard
+  getLeaderboard: () => fetchApi("/api/leaderboard"),
+
+  // Cross-post
+  crosspost: (postId: string, targetSphereSlug: string) =>
+    fetchApi(`/api/posts/${postId}/crosspost?target_sphere_slug=${targetSphereSlug}`, { method: "POST" }),
 
   // Notifications
   getNotifications: () => fetchApi("/api/notifications"),
@@ -224,6 +239,9 @@ export const api = {
 
   // Seed
   seed: () => fetchApi("/api/seed"),
+
+  // Admin
+  getAllUsers: () => fetchApi("/api/admin/users"),
 };
 
 export const setAuthToken = (token: string) => {

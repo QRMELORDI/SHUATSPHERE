@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowBigUp, ArrowBigDown, MessageSquare, Bookmark, Share2, ExternalLink, MoreVertical, Trash2, Flag } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ArrowBigUp, ArrowBigDown, MessageSquare, Bookmark, Share2, ExternalLink, MoreVertical, Trash2, Flag, Send, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Post, USERS } from '../data/mockData';
 import { copyToClipboard } from '../utils/clipboard';
+import { api } from '../../lib/api';
 
 function timeAgo(d: string) {
   const diff = (Date.now() - new Date(d).getTime()) / 1000;
@@ -69,6 +71,20 @@ export function PostCard({ post, compact = false }: PostCardProps) {
     setTimeout(() => setReportDone(false), 3000);
   };
 
+  // Cross-post state
+  const [showCrosspost, setShowCrosspost] = useState(false);
+  const [crosspostSphere, setCrosspostSphere] = useState('');
+  const [crossposting, setCrossposting] = useState(false);
+
+  const handleCrosspost = async () => {
+    if (!crosspostSphere) return;
+    setCrossposting(true);
+    await api.crosspost(post.id, crosspostSphere);
+    setCrossposting(false);
+    setShowCrosspost(false);
+    setCrosspostSphere('');
+  };
+
   return (
     <article
       onClick={() => navigate(`/post/${post.id}`)}
@@ -107,6 +123,14 @@ export function PostCard({ post, compact = false }: PostCardProps) {
             >
               <Share2 size={13} /> Share Link
             </button>
+            {isOwn && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowCrosspost(true); setMenuOpen(false); }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors"
+              >
+                <Send size={13} /> Cross-post
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -255,6 +279,51 @@ export function PostCard({ post, compact = false }: PostCardProps) {
           <Share2 size={16} />
         </button>
       </div>
+
+      {/* Cross-post Modal */}
+      <AnimatePresence>
+        {showCrosspost && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowCrosspost(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm z-[9999] bg-white dark:bg-[#0D0B1A] rounded-2xl border-2 border-zinc-900 dark:border-zinc-700 shadow-[4px_4px_0px_#18181B] dark:shadow-none p-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                  Cross-post to Sphere
+                </h3>
+                <button onClick={() => setShowCrosspost(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <X size={16} />
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Enter sphere slug (e.g. cse-2025)"
+                value={crosspostSphere}
+                onChange={e => setCrosspostSphere(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                className="w-full bg-white dark:bg-[#1E1A35] border-2 border-zinc-900 dark:border-zinc-700 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-[#7C3AED] mb-3"
+              />
+              <button
+                onClick={handleCrosspost}
+                disabled={!crosspostSphere.trim() || crossposting}
+                className="w-full py-2.5 rounded-xl bg-[#7C3AED] text-white font-black text-sm border-2 border-zinc-900 shadow-[2px_2px_0px_#18181B] disabled:opacity-50 transition-all"
+              >
+                {crossposting ? 'Cross-posting...' : 'Cross-post'}
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </article>
   );
 }

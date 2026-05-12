@@ -32,3 +32,18 @@ coverage/
 *.tgz
 .cache/
 .vercel
+
+# Python
+__pycache__/
+*.pyc
+
+# Temp repos / tool output
+everything-claude-code-temp/
+graphify-temp/
+graphify-out/
+
+# Android local (machine-specific)
+android/local.properties
+
+# Stale root duplicates
+ShuatSphereAvatarSystem.jsx
