@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Home, Globe, Plus, MessageSquare, CircleUser,
   Search, Moon, Sun, Bell, LogOut, Bookmark,
-  Ghost, Menu, X, ChevronRight, Trophy
+  Ghost, Menu, X, ChevronRight, Trophy, Share2, Info
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { SphereLogo } from './SphereLogo';
+import { WorldClock } from './WorldClock';
 
 export function Layout() {
   const navigate = useNavigate();
@@ -64,6 +65,7 @@ export function Layout() {
               >
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </button>
+              <WorldClock />
               {isLoggedIn ? (
                 <button
                   onClick={() => navigate('/notifications')}
@@ -199,8 +201,10 @@ export function Layout() {
                   { icon: MessageSquare, label: 'Inbox', path: '/inbox' },
                   { icon: Bell, label: 'Notifications', path: '/notifications' },
                   { icon: Trophy, label: 'Leaderboard', path: '/leaderboard' },
+                  { icon: Share2, label: 'Aura Graph', path: '/aura-graph' },
                   { icon: CircleUser, label: 'Profile', path: '/profile' },
                   { icon: Bookmark, label: 'Stash', path: '/stash' },
+                  { icon: Info, label: 'About Us', path: '/about' },
                 ].map(item => (
                   <button
                     key={item.path}

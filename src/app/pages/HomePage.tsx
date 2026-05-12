@@ -13,13 +13,9 @@ const SORT_OPTIONS = [
 
 const WELCOME_POST_ID = 'shuatsphere-welcome-post';
 
-function shouldShowWelcome(user: { joinDate?: string } | null): boolean {
-  if (!user) return false;
-  const joinDate = user.joinDate ? new Date(user.joinDate) : null;
-  if (!joinDate) return true;
-  const daysSinceJoin = (Date.now() - joinDate.getTime()) / (1000 * 60 * 60 * 24);
+function shouldShowWelcome(): boolean {
   const shown = localStorage.getItem(WELCOME_POST_ID);
-  return daysSinceJoin <= 7 && !shown;
+  return !shown;
 }
 
 function markWelcomeShown() {
@@ -34,10 +30,10 @@ export function HomePage() {
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
-    if (isLoggedIn && currentUser && shouldShowWelcome(currentUser)) {
-      setShowWelcome(true);
+    if (isLoggedIn) {
+      setShowWelcome(shouldShowWelcome());
     }
-  }, [isLoggedIn, currentUser]);
+  }, [isLoggedIn]);
 
   const handleDismissWelcome = () => {
     setShowWelcome(false);

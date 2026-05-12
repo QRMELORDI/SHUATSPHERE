@@ -132,9 +132,6 @@ export function ProfilePage() {
     setEditOpen(true);
   };
 
-  const [autoSaved, setAutoSaved] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   // Debounced auto-save on any field change
   const scheduleAutoSave = () => {
     if (saveTimeoutRef.current) {

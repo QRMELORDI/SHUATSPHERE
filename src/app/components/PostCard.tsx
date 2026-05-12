@@ -5,7 +5,6 @@ import { ArrowBigUp, ArrowBigDown, MessageSquare, Bookmark, Share2, ExternalLink
 import { useApp } from '../context/AppContext';
 import { Post, USERS } from '../data/mockData';
 import { copyToClipboard } from '../utils/clipboard';
-import { api } from '../../lib/api';
 
 function timeAgo(d: string) {
   const diff = (Date.now() - new Date(d).getTime()) / 1000;
@@ -22,9 +21,15 @@ interface PostCardProps {
 
 export function PostCard({ post, compact = false }: PostCardProps) {
   const navigate = useNavigate();
-  const { boostedPosts, buriedPosts, stashedPosts, toggleBoost, toggleBury, toggleStash, isLoggedIn, currentUser, deletePost } = useApp();
+  const { boostedPosts, buriedPosts, stashedPosts, toggleBoost, toggleBury, toggleStash, isLoggedIn, currentUser, deletePost, crosspost } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportDone, setReportDone] = useState(false);
+  
+  // Cross-post state
+  const [showCrosspost, setShowCrosspost] = useState(false);
+  const [crosspostSphere, setCrosspostSphere] = useState('');
+  const [crossposting, setCrossposting] = useState(false);
+  const [shareMsg, setShareMsg] = useState('');
 
   const author = USERS.find(u => u.id === post.authorId);
   const isBoosted = boostedPosts.has(post.id);
@@ -54,6 +59,8 @@ export function PostCard({ post, compact = false }: PostCardProps) {
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     copyToClipboard(window.location.origin + '/post/' + post.id);
+    setShareMsg('Link copied!');
+    setTimeout(() => setShareMsg(''), 2000);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -71,18 +78,17 @@ export function PostCard({ post, compact = false }: PostCardProps) {
     setTimeout(() => setReportDone(false), 3000);
   };
 
-  // Cross-post state
-  const [showCrosspost, setShowCrosspost] = useState(false);
-  const [crosspostSphere, setCrosspostSphere] = useState('');
-  const [crossposting, setCrossposting] = useState(false);
-
   const handleCrosspost = async () => {
     if (!crosspostSphere) return;
     setCrossposting(true);
-    await api.crosspost(post.id, crosspostSphere);
+    const result = await crosspost(post.id, crosspostSphere);
     setCrossposting(false);
-    setShowCrosspost(false);
-    setCrosspostSphere('');
+    if (result.success) {
+      setShowCrosspost(false);
+      setCrosspostSphere('');
+    } else {
+      alert(result.error || 'Crosspost failed');
+    }
   };
 
   return (
@@ -118,12 +124,12 @@ export function PostCard({ post, compact = false }: PostCardProps) {
               </button>
             )}
             <button
-              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}
+              onClick={handleShare}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-colors"
             >
               <Share2 size={13} /> Share Link
             </button>
-            {isOwn && (
+            {isLoggedIn && (
               <button
                 onClick={(e) => { e.stopPropagation(); setShowCrosspost(true); setMenuOpen(false); }}
                 className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors"
@@ -155,14 +161,6 @@ export function PostCard({ post, compact = false }: PostCardProps) {
             <span className="text-xs text-zinc-400">•</span>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#0D9488]/10 border border-[#0D9488]/20 text-[#0D9488] text-[10px] font-black uppercase tracking-wider">
               {post.flair}
-            </span>
-          </>
-        )}
-        {post.isEvent && post.eventDate && (
-          <>
-            <span className="text-xs text-zinc-400">•</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800/50 text-pink-600 text-[10px] font-black uppercase tracking-wider">
-              📅 {post.eventDate}
             </span>
           </>
         )}
@@ -219,19 +217,10 @@ export function PostCard({ post, compact = false }: PostCardProps) {
         </div>
       )}
 
-      {/* Report success toast */}
-      {reportDone && (
-        <div className="mb-2 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 text-amber-700 text-xs font-bold">
-          ✓ Post reported — we'll review it
-        </div>
-      )}
-
       {/* Actions */}
       <div className="flex items-center gap-4 mt-2 pt-3 border-t-2 border-zinc-100 dark:border-zinc-800/50">
-        {/* Boost */}
         <button
           onClick={handleBoost}
-          data-testid="boost-button"
           className={`flex items-center gap-1.5 font-black text-sm transition-all ${
             isBoosted ? 'text-[#7C3AED]' : 'text-zinc-400 hover:text-[#7C3AED]'
           }`}
@@ -240,10 +229,8 @@ export function PostCard({ post, compact = false }: PostCardProps) {
           <span>{Math.max(0, score)}</span>
         </button>
 
-        {/* Bury */}
         <button
           onClick={handleBury}
-          data-testid="bury-button"
           className={`flex items-center gap-1 font-black text-sm transition-all ${
             isBuried ? 'text-[#0D9488]' : 'text-zinc-400 hover:text-[#0D9488]'
           }`}
@@ -251,7 +238,6 @@ export function PostCard({ post, compact = false }: PostCardProps) {
           <ArrowBigDown size={22} fill={isBuried ? '#0D9488' : 'none'} strokeWidth={2} />
         </button>
 
-        {/* Comments */}
         <button
           onClick={() => navigate(`/post/${post.id}`)}
           className="flex items-center gap-1.5 text-zinc-400 hover:text-foreground transition-all font-semibold text-sm"
@@ -260,10 +246,8 @@ export function PostCard({ post, compact = false }: PostCardProps) {
           <span>{post.replyCount}</span>
         </button>
 
-        {/* Stash */}
         <button
           onClick={handleStash}
-          data-testid="stash-button"
           className={`ml-auto flex items-center gap-1 font-semibold text-sm transition-all ${
             isStashed ? 'text-emerald-500' : 'text-zinc-400 hover:text-emerald-500'
           }`}
@@ -271,7 +255,6 @@ export function PostCard({ post, compact = false }: PostCardProps) {
           <Bookmark size={17} fill={isStashed ? '#10B981' : 'none'} />
         </button>
 
-        {/* Share */}
         <button
           onClick={handleShare}
           className="flex items-center gap-1 text-zinc-400 hover:text-foreground transition-all"

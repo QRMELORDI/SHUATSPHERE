@@ -17,9 +17,10 @@ interface AppContextType {
   joinedSpheres: Set<string>;
   toggleJoinSphere: (sphereSlug: string) => void;
   posts: Post[];
-  addPost: (post: Omit<Post, 'id' | 'boosts' | 'buries' | 'replyCount' | 'stashCount' | 'createdAt'>) => void;
+  addPost: (post: Omit<Post, 'id' | 'boosts' | 'buries' | 'replyCount' | 'stashCount' | 'createdAt'>) => Promise<Post | null>;
   deletePost: (postId: string) => void;
   updateProfile: (data: Partial<Pick<User, 'name' | 'bio' | 'avatar' | 'bannerColor'>>) => void;
+  crosspost: (postId: string, sphereSlug: string) => Promise<{ success: boolean; error?: string }>;
   whispers: Whisper[];
   sendWhisper: (toId: string, content: string) => void;
   markWhisperRead: (whisperId: string) => void;
@@ -347,10 +348,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addPost = async (postData: Omit<Post, 'id' | 'boosts' | 'buries' | 'replyCount' | 'stashCount' | 'createdAt'>) => {
-    if (!isLoggedIn) return;
+  const addPost = async (postData: Omit<Post, 'id' | 'boosts' | 'buries' | 'replyCount' | 'stashCount' | 'createdAt'>): Promise<Post | null> => {
+    if (!isLoggedIn) return null;
     
-    // Optimistically add to UI
     const tempId = 'temp_' + Date.now();
     const tempPost: Post = {
       ...postData,
@@ -361,6 +361,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       stashCount: 0,
       createdAt: new Date().toISOString(),
     };
+    
+    // Add temp post to state for immediate feedback
     setPosts(prev => [tempPost, ...prev]);
     
     try {
@@ -374,27 +376,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
         flair: postData.flair,
       });
       
-      if (result.error) {
+      if (result.error || !result.data) {
         setPosts(prev => prev.filter(p => p.id !== tempId));
-        return;
+        return null;
       }
       
-      if (result.data) {
-        setPosts(prev => {
-          const exists = prev.find(p => p.id === tempId);
-          if (exists) {
-            return prev.map(p => p.id === tempId ? result.data as Post : p);
-          }
-          return [result.data as Post, ...prev];
-        });
-        setSpheres(prev => prev.map(s => 
-          s.slug === postData.sphereSlug 
-            ? { ...s, postCount: s.postCount + 1 }
-            : s
-        ));
-      }
-    } catch {
+      const newPost = result.data;
+      
+      // Replace temp post with real post
+      setPosts(prev => prev.map(p => p.id === tempId ? newPost : p));
+      
+      // Update sphere post count
+      setSpheres(prev => prev.map(s => 
+        s.slug === postData.sphereSlug 
+          ? { ...s, postCount: s.postCount + 1 }
+          : s
+      ));
+      
+      return newPost;
+    } catch (err) {
+      console.error('Add post failed:', err);
       setPosts(prev => prev.filter(p => p.id !== tempId));
+      return null;
     }
   };
 
@@ -414,6 +417,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCurrentUser(result.data as User);
       localStorage.setItem('shuatsphere_user', JSON.stringify(result.data));
     }
+  };
+
+  const crosspost = async (postId: string, sphereSlug: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isLoggedIn) return { success: false, error: 'Login required' };
+    
+    const result = await api.crosspost(postId, sphereSlug);
+    if (result.error) return { success: false, error: result.error };
+    
+    await loadPosts(); // Refresh to see the crosspost
+    return { success: true };
   };
 
   const sendWhisper = async (toId: string, content: string) => {
@@ -493,6 +506,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addPost,
       deletePost,
       updateProfile,
+      crosspost,
       whispers,
       sendWhisper,
       markWhisperRead,

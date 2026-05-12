@@ -17,7 +17,7 @@ function RankBadge({ rank }: { rank: number }) {
 
 export function LeaderboardPage() {
   const navigate = useNavigate();
-  const { spheres } = useApp();
+  const { spheres, isLoggedIn } = useApp();
   const [tab, setTab] = useState<'aura' | 'spheres'>('aura');
   const [leaderboardUsers, setLeaderboardUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,18 +25,24 @@ export function LeaderboardPage() {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const result = await api.getLeaderboard();
-        if (result.data) {
-          setLeaderboardUsers(result.data as User[]);
+        if (isLoggedIn) {
+          const result = await api.getLeaderboard();
+          if (result.data) {
+            const data = result.data as User[] | { users?: User[] };
+            if (Array.isArray(data)) {
+              setLeaderboardUsers(data);
+            } else if (data && 'users' in data) {
+              setLeaderboardUsers((data as { users: User[] }).users || []);
+            }
+          }
         }
       } catch {
-        // Keep empty on error
       } finally {
         setLoading(false);
       }
     };
     fetchLeaderboard();
-  }, []);
+  }, [isLoggedIn]);
 
   const sortedUsers = [...leaderboardUsers].sort((a, b) => b.auraScore - a.auraScore);
   const topSpheres = [...spheres].sort((a, b) => b.memberCount - a.memberCount);

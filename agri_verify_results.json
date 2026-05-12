@@ -1,0 +1,35 @@
+[
+  {
+    "field_id": "SH-001",
+    "timestamp": "2026-05-12 19:40:50",
+    "satellite_data": {
+      "ndvi": 0.52,
+      "moisture": 12.1,
+      "biomass": 489
+    },
+    "sustainability_score": 32.05,
+    "status": "FLAGGED"
+  },
+  {
+    "field_id": "SH-002",
+    "timestamp": "2026-05-12 19:40:51",
+    "satellite_data": {
+      "ndvi": 0.44,
+      "moisture": 40.29,
+      "biomass": 263
+    },
+    "sustainability_score": 42.14,
+    "status": "VERIFIED"
+  },
+  {
+    "field_id": "SH-003",
+    "timestamp": "2026-05-12 19:40:52",
+    "satellite_data": {
+      "ndvi": 0.47,
+      "moisture": 40.01,
+      "biomass": 182
+    },
+    "sustainability_score": 43.5,
+    "status": "VERIFIED"
+  }
+]

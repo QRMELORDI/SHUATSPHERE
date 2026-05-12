@@ -18,6 +18,8 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { AdminAuraPage } from './pages/AdminAuraPage';
 import { ShuatsphereAvatarSystem } from './components/ShuatsphereAvatarSystem';
 import { SphereLogo } from './components/SphereLogo';
+import { AuraGraphPage } from './pages/AuraGraphPage';
+import { AboutUsPage } from './pages/AboutUsPage';
 
 function NotFound() {
   return (
@@ -69,7 +71,9 @@ export const router = createBrowserRouter([
       { path: 'stash', Component: StashPage },
       { path: 'notifications', Component: NotificationsPage },
       { path: 'leaderboard', Component: LeaderboardPage },
+      { path: 'aura-graph', Component: AuraGraphPage },
       { path: 'admin-aura', Component: AdminAuraPage },
+      { path: 'about', Component: AboutUsPage },
       { path: '*', Component: NotFound },
     ],
   },

@@ -80,7 +80,7 @@ export function CreatePostPage() {
       return;
     }
 
-    addPost({
+    const newPost = await addPost({
       title: title.trim(),
       content: type === 'text' ? content : undefined,
       imageUrl: type === 'image' ? imageData : undefined,
@@ -93,7 +93,9 @@ export function CreatePostPage() {
     });
 
     setSubmitting(false);
-    navigate('/');
+    if (newPost) {
+      navigate('/');
+    }
   };
 
   const inputClass = 'w-full bg-white dark:bg-[#1E1A35] border-2 border-zinc-900 dark:border-zinc-700 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:border-[#7C3AED] transition-all shadow-[2px_2px_0px_#18181B] dark:shadow-none focus:shadow-none';

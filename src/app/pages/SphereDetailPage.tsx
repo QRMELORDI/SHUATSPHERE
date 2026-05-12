@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { ArrowLeft, Users, FileText, Crown, TrendingUp, Clock, Trophy } from 'lucide-react';
 import { PostCard } from '../components/PostCard';
+import { FieldReportView } from '../components/FieldReportView';
 import { useApp } from '../context/AppContext';
 import { USERS } from '../data/mockData';
 
@@ -122,6 +123,8 @@ export function SphereDetailPage() {
 
       {/* Posts */}
       <div className="px-4 pb-4 space-y-4">
+        {slug === 'agriculture' && <FieldReportView />}
+        
         {spherePosts.length === 0 ? (
           <div className="text-center py-12">
             <span className="text-4xl block mb-3">{sphere.icon}</span>

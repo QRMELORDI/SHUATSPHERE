@@ -274,7 +274,7 @@ export function PostDetailPage() {
   const {
     posts, boostedPosts, buriedPosts, stashedPosts,
     toggleBoost, toggleBury, toggleStash,
-    isLoggedIn, currentUser, deletePost, spheres,
+    isLoggedIn, currentUser, deletePost, spheres, refreshPosts,
   } = useApp();
 
   const [replyText, setReplyText] = useState('');
@@ -292,15 +292,47 @@ export function PostDetailPage() {
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
   const [commentSort, setCommentSort] = useState<'top' | 'new'>('top');
   const [reportedComments, setReportedComments] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(!posts.find(p => p.id === id));
+  const [apiPost, setApiPost] = useState<typeof posts[0] | null>(null);
 
-  const post = posts.find(p => p.id === id);
+  useEffect(() => {
+    const fetchPost = async () => {
+      if (!id) return;
+      const found = posts.find(p => p.id === id);
+      if (found) {
+        setApiPost(found);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      await refreshPosts(); // Try refreshing first
+      // The effect will re-run when 'posts' changes, so we don't need to do more here
+      setLoading(false);
+    };
+    fetchPost();
+  }, [id, posts]);
+
+  const post = apiPost;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-10 h-10 border-4 border-[#7C3AED] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-zinc-500 font-bold text-sm">Finding post in the sphere...</p>
+      </div>
+    );
+  }
 
   if (!post) {
     return (
       <div className="text-center py-16 p-4">
         <span className="text-5xl block mb-4">📭</span>
-        <p className="font-black text-foreground text-lg" style={{ fontFamily: 'Outfit, sans-serif' }}>Post not found</p>
-        <button onClick={() => navigate('/')} className="mt-3 text-sm text-[#7C3AED] font-bold hover:underline">Back to feed</button>
+        <h2 className="font-black text-foreground text-lg" style={{ fontFamily: 'Outfit, sans-serif' }}>Post not found</h2>
+        <p className="text-zinc-500 text-sm font-semibold mt-1">This post might have been buried or deleted.</p>
+        <button onClick={() => navigate('/')} className="mt-6 px-6 py-2.5 rounded-2xl bg-[#7C3AED] text-white font-black border-2 border-zinc-900 shadow-[3px_3px_0px_#18181B] active:translate-y-0.5 transition-all">
+          Back to Feed
+        </button>
       </div>
     );
   }

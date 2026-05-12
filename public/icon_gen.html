@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    async function generateIcon(url, size) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.getElementById('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          
+          // Draw with rounded corners for ic_launcher_round
+          // But for now let's just do square and the caller can decide
+          ctx.clearRect(0, 0, size, size);
+          ctx.drawImage(img, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = url;
+      });
+    }
+
+    async function generateRoundIcon(url, size) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.getElementById('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          
+          ctx.clearRect(0, 0, size, size);
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(img, 0, 0, size, size);
+          ctx.restore();
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = url;
+      });
+    }
+
+    window.generateIcons = async (url) => {
+      const sizes = {
+        'mdpi': 48,
+        'hdpi': 72,
+        'xhdpi': 96,
+        'xxhdpi': 144,
+        'xxxhdpi': 192
+      };
+      const results = {};
+      for (const [name, size] of Object.entries(sizes)) {
+        results[name] = {
+          square: await generateIcon(url, size),
+          round: await generateRoundIcon(url, size)
+        };
+      }
+      return results;
+    };
+  </script>
+</body>
+</html>

@@ -13,7 +13,7 @@ const config: CapacitorConfig = {
     scheme: 'shuatsphere',
   },
   android: {
-    backgroundColor: '#0D0B1A',
+    backgroundColor: '#7C3AED',
     allowBackup: true,
     fullScreen: false,
     captureInput: false,

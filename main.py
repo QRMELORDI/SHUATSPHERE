@@ -962,3 +962,53 @@ async def give_aura_points(data: dict, token: str = Depends(get_token)):
     )
     
     return {"success": True, "message": f"Added {aura_amount} aura to {target['name']}", "newScore": new_score}
+
+@app.post("/api/posts/{post_id}/crosspost")
+async def crosspost_post(post_id: str, target_sphere_slug: str, token: str = Depends(get_token)):
+    user = await get_current_user(token)
+    post = await db.posts.find_one({"_id": ObjectId(post_id)})
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    target_sphere = await db.spheres.find_one({"slug": target_sphere_slug})
+    if not target_sphere:
+        raise HTTPException(status_code=404, detail="Target sphere not found")
+    
+    if target_sphere_slug not in user.get("joinedSpheres", []):
+        raise HTTPException(status_code=403, detail="You must join the target sphere first")
+    
+    crosspost_post = {
+        "title": post["title"],
+        "content": post.get("content"),
+        "imageUrl": post.get("imageUrl"),
+        "linkUrl": post.get("linkUrl"),
+        "type": post.get("type", "text"),
+        "authorId": user["id"],
+        "sphereId": str(target_sphere["_id"]),
+        "sphereSlug": target_sphere_slug,
+        "boosts": 0,
+        "buries": 0,
+        "replyCount": 0,
+        "stashCount": 0,
+        "createdAt": datetime.utcnow().isoformat(),
+        "flair": post.get("flair"),
+        "isPinned": False,
+        "isEvent": post.get("isEvent", False),
+        "eventDate": post.get("eventDate"),
+        "eventVenue": post.get("eventVenue"),
+        "originalPostId": post_id,
+    }
+    result = await db.posts.insert_one(crosspost_post)
+    crosspost_post["_id"] = result.inserted_id
+    
+    await db.spheres.update_one(
+        {"_id": target_sphere["_id"]},
+        {"$inc": {"postCount": 1}}
+    )
+    
+    return {"success": True, "message": f"Cross-posted to s/{target_sphere_slug}", "post": serialize_doc(crosspost_post)}
+
+@app.get("/api/leaderboard")
+async def get_leaderboard(token: str = Depends(get_token)):
+    users = await db.users.find({}, {"password": 0}).sort("auraScore", -1).limit(50).to_list(50)
+    return [serialize_doc(u) for u in users]

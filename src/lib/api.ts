@@ -1,3 +1,5 @@
+import { User, Sphere, Post, Whisper, Notification, Reply } from '../app/data/mockData';
+
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? "http://localhost:8000"
   : "https://shuatsphere.onrender.com";
@@ -78,13 +80,26 @@ function getMockResponse<T>(endpoint: string, options?: RequestInit): ApiRespons
     return { data: [{ id: 'sphere1', name: 'CSE 2025', slug: 'cse-2025', description: 'CSE batch 2025', icon: '💻', coverColor: 'from-violet-600 to-purple-800', memberCount: 342, postCount: 1204, createdBy: 'user1', createdAt: '2024-01-01', isPrivate: false, category: 'Academics', tags: ['CSE'], keeper: 'user1' }, { id: 'sphere2', name: 'DSA Practice', slug: 'dsa', description: 'Data Structures & Algorithms', icon: '🧩', coverColor: 'from-green-600 to-emerald-800', memberCount: 521, postCount: 2341, createdBy: 'user1', createdAt: '2024-01-01', isPrivate: false, category: 'Academics', tags: ['DSA'], keeper: 'user1' }, { id: 'sphere3', name: 'Sports Zone', slug: 'sports', description: 'All sports discussions', icon: '🏏', coverColor: 'from-orange-500 to-red-600', memberCount: 687, postCount: 1876, createdBy: 'user4', createdAt: '2024-01-01', isPrivate: false, category: 'Sports', tags: ['Sports'], keeper: 'user4' }] as T };
   }
   if (endpoint.startsWith('/api/posts')) {
-    return { data: [{ id: 'post1', title: 'Welcome to Schwartzpear! 🎉', content: 'This is your student community platform. Connect with fellow students, join spheres, and share content!', imageUrl: undefined, linkUrl: undefined, type: 'text', authorId: 'user1', sphereId: 'sphere1', sphereSlug: 'cse-2025', boosts: 42, buries: 2, replyCount: 12, stashCount: 8, createdAt: new Date().toISOString(), flair: 'Announcement' }] as T };
+    if (options?.method === 'POST') {
+      const body = JSON.parse(options?.body as string || '{}');
+      return { data: { id: 'post_' + Date.now(), ...body, authorId: 'user1', sphereId: 'sphere1', boosts: 0, buries: 0, replyCount: 0, stashCount: 0, createdAt: new Date().toISOString() } as T };
+    }
+    return { data: [{ id: 'post1', title: 'Welcome to SHUATSPHERE! 🎉', content: 'This is your student community platform. Connect with fellow students, join spheres, and share content!', imageUrl: undefined, linkUrl: undefined, type: 'text', authorId: 'user1', sphereId: 'sphere1', sphereSlug: 'cse-2025', boosts: 42, buries: 2, replyCount: 12, stashCount: 8, createdAt: new Date().toISOString(), flair: 'Announcement' }] as T };
+  }
+  if (endpoint === '/api/admin/users') {
+    return { data: { users: Object.values(MOCK_USERS).map(u => ({ ...u, auraScore: 500, joinDate: '2024-01-01', badges: [], joinedSpheres: [] })) } as T };
   }
   if (endpoint.startsWith('/api/notifications')) {
     return { data: [] as T };
   }
   if (endpoint.startsWith('/api/whispers')) {
     return { data: [] as T };
+  }
+  if (endpoint === '/api/admin/aura' && options?.method === 'POST') {
+    return { data: { success: true } as T };
+  }
+  if (endpoint.includes('/crosspost') && options?.method === 'POST') {
+    return { data: { success: true } as T };
   }
   return { data: undefined };
 }
@@ -98,31 +113,31 @@ export const api = {
     username: string;
     batch: string;
     branch: string;
-  }) => fetchApi("/api/auth/register", { method: "POST", body: JSON.stringify(user) }),
+  }) => fetchApi<{ token: string; user: User }>("/api/auth/register", { method: "POST", body: JSON.stringify(user) }),
 
   login: (credentials: { email: string; password: string }) =>
-    fetchApi("/api/auth/login", { method: "POST", body: JSON.stringify(credentials) }),
+    fetchApi<{ token: string; user: User }>("/api/auth/login", { method: "POST", body: JSON.stringify(credentials) }),
 
   resetPassword: (data: { email: string; username: string; newPassword: string }) =>
-    fetchApi("/api/auth/reset-password", { method: "POST", body: JSON.stringify(data) }),
+    fetchApi<{ success: boolean }>("/api/auth/reset-password", { method: "POST", body: JSON.stringify(data) }),
 
-  getMe: () => fetchApi("/api/auth/me"),
+  getMe: () => fetchApi<User>("/api/auth/me"),
 
   // Users
-  getUser: (userId: string) => fetchApi(`/api/users/${userId}`),
+  getUser: (userId: string) => fetchApi<User>(`/api/users/${userId}`),
 
   updateProfile: (data: Record<string, unknown>) =>
-    fetchApi("/api/users/me", { method: "PUT", body: JSON.stringify(data) }),
+    fetchApi<User>("/api/users/me", { method: "PUT", body: JSON.stringify(data) }),
 
   // Spheres
   getSpheres: (category?: string, search?: string) => {
     const params = new URLSearchParams();
     if (category && category !== "All") params.append("category", category);
     if (search) params.append("search", search);
-    return fetchApi(`/api/spheres?${params.toString()}`);
+    return fetchApi<Sphere[]>(`/api/spheres?${params.toString()}`);
   },
 
-  getSphere: (slug: string) => fetchApi(`/api/spheres/${slug}`),
+  getSphere: (slug: string) => fetchApi<Sphere>(`/api/spheres/${slug}`),
 
   createSphere: (sphere: {
     name: string;
@@ -131,23 +146,23 @@ export const api = {
     icon: string;
     coverColor: string;
     category: string;
-  }) => fetchApi("/api/spheres", { method: "POST", body: JSON.stringify(sphere) }),
+  }) => fetchApi<Sphere>("/api/spheres", { method: "POST", body: JSON.stringify(sphere) }),
 
   joinSphere: (slug: string) =>
-    fetchApi(`/api/spheres/${slug}/join`, { method: "POST" }),
+    fetchApi<{ success: boolean }>(`/api/spheres/${slug}/join`, { method: "POST" }),
 
   leaveSphere: (slug: string) =>
-    fetchApi(`/api/spheres/${slug}/leave`, { method: "POST" }),
+    fetchApi<{ success: boolean }>(`/api/spheres/${slug}/leave`, { method: "POST" }),
 
   // Posts
   getPosts: (sphere?: string, sort?: string) => {
     const params = new URLSearchParams();
     if (sphere) params.append("sphere", sphere);
     if (sort) params.append("sort", sort);
-    return fetchApi(`/api/posts?${params.toString()}`);
+    return fetchApi<Post[]>(`/api/posts?${params.toString()}`);
   },
 
-  getPost: (postId: string) => fetchApi(`/api/posts/${postId}`),
+  getPost: (postId: string) => fetchApi<Post>(`/api/posts/${postId}`),
 
   createPost: (post: {
     title: string;
@@ -157,62 +172,62 @@ export const api = {
     type: string;
     sphereSlug: string;
     flair?: string;
-  }) => {
+  }): Promise<ApiResponse<Post>> => {
     const token = localStorage.getItem("shuatsphere_token");
     if (!token) return Promise.resolve({ error: 'No auth token' });
-    return fetchApi("/api/posts", { method: "POST", body: JSON.stringify(post) });
+    return fetchApi<Post>("/api/posts", { method: "POST", body: JSON.stringify(post) });
   },
 
   deletePost: (postId: string) =>
-    fetchApi(`/api/posts/${postId}`, { method: "DELETE" }),
+    fetchApi<{ success: boolean }>(`/api/posts/${postId}`, { method: "DELETE" }),
 
   votePost: (postId: string, vote: string) =>
-    fetchApi(`/api/posts/${postId}/vote?vote=${vote}`, { method: "POST" }),
+    fetchApi<{ success: boolean }>(`/api/posts/${postId}/vote?vote=${vote}`, { method: "POST" }),
 
   stashPost: (postId: string) =>
-    fetchApi(`/api/posts/${postId}/stash`, { method: "POST" }),
+    fetchApi<{ success: boolean }>(`/api/posts/${postId}/stash`, { method: "POST" }),
 
   // Comments
-  getComments: (postId: string) => fetchApi(`/api/posts/${postId}/comments`),
+  getComments: (postId: string) => fetchApi<Reply[]>(`/api/posts/${postId}/comments`),
 
   createComment: (comment: { postId: string; content: string; parentId?: string }) =>
-    fetchApi("/api/comments", { method: "POST", body: JSON.stringify(comment) }),
+    fetchApi<Reply>("/api/comments", { method: "POST", body: JSON.stringify(comment) }),
 
   voteComment: (commentId: string, vote: string) =>
-    fetchApi(`/api/comments/${commentId}/vote?vote=${vote}`, { method: "POST" }),
+    fetchApi<{ success: boolean }>(`/api/comments/${commentId}/vote?vote=${vote}`, { method: "POST" }),
 
   // Whispers
-  getWhispers: () => fetchApi("/api/whispers"),
+  getWhispers: () => fetchApi<Whisper[]>("/api/whispers"),
 
   sendWhisper: (whisper: { toId: string; content: string }) =>
-    fetchApi("/api/whispers", { method: "POST", body: JSON.stringify(whisper) }),
+    fetchApi<Whisper>("/api/whispers", { method: "POST", body: JSON.stringify(whisper) }),
 
   markWhisperRead: (whisperId: string) =>
-    fetchApi(`/api/whispers/${whisperId}/read`, { method: "POST" }),
+    fetchApi<{ success: boolean }>(`/api/whispers/${whisperId}/read`, { method: "POST" }),
 
-  getUnreadWhisperCount: () => fetchApi("/api/whispers/unread-count"),
+  getUnreadWhisperCount: () => fetchApi<{ count: number }>("/api/whispers/unread-count"),
 
   // Admin
   giveAuraPoints: (userId: string, points: number) =>
-    fetchApi(`/api/admin/give-aura?user_id=${userId}&points=${points}`, { method: "POST" }),
+    fetchApi<{ success: boolean }>("/api/admin/aura", { method: "POST", body: JSON.stringify({ userId, aura: points }) }),
 
   // Leaderboard
-  getLeaderboard: () => fetchApi("/api/leaderboard"),
+  getLeaderboard: () => fetchApi<User[]>("/api/leaderboard"),
 
   // Cross-post
   crosspost: (postId: string, targetSphereSlug: string) =>
-    fetchApi(`/api/posts/${postId}/crosspost?target_sphere_slug=${targetSphereSlug}`, { method: "POST" }),
+    fetchApi<{ success: boolean }>(`/api/posts/${postId}/crosspost?target_sphere_slug=${targetSphereSlug}`, { method: "POST" }),
 
   // Notifications
-  getNotifications: () => fetchApi("/api/notifications"),
+  getNotifications: () => fetchApi<Notification[]>("/api/notifications"),
 
   markNotificationRead: (notifId: string) =>
-    fetchApi(`/api/notifications/${notifId}/read`, { method: "POST" }),
+    fetchApi<{ success: boolean }>(`/api/notifications/${notifId}/read`, { method: "POST" }),
 
   // Search
-  search: (query: string) => fetchApi(`/api/search?query=${encodeURIComponent(query)}`),
+  search: (query: string) => fetchApi<{ posts: Post[]; spheres: Sphere[] }>(`/api/search?query=${encodeURIComponent(query)}`),
 
-  searchUsers: (query: string) => fetchApi(`/api/search/users?q=${encodeURIComponent(query)}`),
+  searchUsers: (query: string) => fetchApi<User[]>(`/api/search/users?q=${encodeURIComponent(query)}`),
 
   // Upload
   uploadImage: async (file: File): Promise<string | null> => {
@@ -238,10 +253,10 @@ export const api = {
   },
 
   // Seed
-  seed: () => fetchApi("/api/seed"),
+  seed: () => fetchApi<{ success: boolean }>("/api/seed"),
 
   // Admin
-  getAllUsers: () => fetchApi("/api/admin/users"),
+  getAllUsers: () => fetchApi<{ users: User[] }>("/api/admin/users"),
 };
 
 export const setAuthToken = (token: string) => {

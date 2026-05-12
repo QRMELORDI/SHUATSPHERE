@@ -24,17 +24,18 @@ export function AnimatedGlobe({ size = 120, className = '' }: AnimatedGlobeProps
 
       {/* Main globe */}
       <motion.div
-        className="absolute inset-2 rounded-full bg-gradient-to-br from-violet-600 via-blue-600 to-teal-600"
+        className="absolute inset-2 rounded-full"
         animate={{
           rotate: 360,
         }}
         transition={{
-          duration: 12,
+          duration: 20,
           repeat: Infinity,
           ease: 'linear',
         }}
         style={{
           background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 70%, rgba(0,0,0,0.2) 0%, transparent 50%), conic-gradient(from 0deg, #7C3AED, #3B82F6, #0D9488, #10B981, #7C3AED)',
+          boxShadow: 'inset 0 0 40px rgba(0,0,0,0.5)',
         }}
       />
 
